@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { EquipmentChecklist } from './components/EquipmentChecklist';
 import { GerminationSelector } from './components/GerminationSelector';
 import { GrowTimeline } from './components/GrowTimeline';
@@ -6,9 +6,10 @@ import { DayDetail } from './components/DayDetail';
 import { EnvironmentalLogger } from './components/EnvironmentalLogger';
 import { SubzeroProtocol } from './components/SubzeroProtocol';
 import { Guardrails } from './components/Guardrails';
+import { AutoTracker } from './components/AutoTracker';
 import type { EnvironmentalReading } from './data/types';
 
-type Tab = 'setup' | 'equipment' | 'germination' | 'timeline' | 'logger' | 'subzero' | 'guardrails';
+type Tab = 'tracker' | 'setup' | 'equipment' | 'germination' | 'timeline' | 'logger' | 'subzero' | 'guardrails';
 
 function getDaysSince(dateStr: string): number {
   const start = new Date(dateStr);
@@ -17,23 +18,91 @@ function getDaysSince(dateStr: string): number {
   return Math.max(1, diff + 1);
 }
 
+const STORAGE_KEY = 'go-green-auto-state';
+
+interface PersistedState {
+  breederLifecycle: number;
+  startDate: string;
+  currentDay: number;
+  completedCheckpoints: Record<string, boolean>;
+  timestamps: Record<string, string>;
+  setupComplete: boolean;
+}
+
+function loadState(): PersistedState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveState(state: PersistedState) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
 export default function App() {
-  const [tab, setTab] = useState<Tab>('setup');
-  const [breederLifecycle, setBreederLifecycle] = useState(80);
-  const [startDate, setStartDate] = useState('');
-  const [currentDay, setCurrentDay] = useState(1);
+  const saved = loadState();
+  const [tab, setTab] = useState<Tab>(saved?.setupComplete ? 'tracker' : 'setup');
+  const [breederLifecycle, setBreederLifecycle] = useState(saved?.breederLifecycle || 80);
+  const [startDate, setStartDate] = useState(saved?.startDate || '');
+  const [currentDay, setCurrentDay] = useState(saved?.currentDay || 1);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [germPath, setGermPath] = useState<'direct' | 'transplant' | null>(null);
   const [subzeroActive, setSubzeroActive] = useState(false);
   const [readings, setReadings] = useState<EnvironmentalReading[]>([]);
-  const [setupComplete, setSetupComplete] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(saved?.setupComplete || false);
+  const [completedCheckpoints, setCompletedCheckpoints] = useState<Record<string, boolean>>(
+    saved?.completedCheckpoints || {}
+  );
+  const [timestamps, setTimestamps] = useState<Record<string, string>>(
+    saved?.timestamps || {}
+  );
+
+  const persist = useCallback((updates: Partial<PersistedState>) => {
+    const base: PersistedState = {
+      breederLifecycle,
+      startDate,
+      currentDay,
+      completedCheckpoints,
+      timestamps,
+      setupComplete,
+    };
+    const next = { ...base, ...updates };
+    saveState(next);
+  }, [breederLifecycle, startDate, currentDay, completedCheckpoints, timestamps, setupComplete]);
 
   const handleSetup = () => {
     const day = startDate ? getDaysSince(startDate) : 1;
     setCurrentDay(day);
     setSetupComplete(true);
-    setTab('timeline');
+    setTab('tracker');
+    persist({ setupComplete: true, currentDay: day });
   };
+
+  const handleToggleCheckpoint = useCallback((checkpointId: string) => {
+    setCompletedCheckpoints(prev => {
+      const next = { ...prev, [checkpointId]: !prev[checkpointId] };
+      return next;
+    });
+    setTimestamps(prev => {
+      const next = { ...prev };
+      if (!next[checkpointId]) {
+        next[checkpointId] = new Date().toISOString().split('T')[0];
+      } else {
+        delete next[checkpointId];
+      }
+      return next;
+    });
+  }, []);
+
+  // Persist whenever checkpoints/timestamps change
+  useEffect(() => {
+    if (setupComplete) {
+      persist({ completedCheckpoints, timestamps });
+    }
+  }, [completedCheckpoints, timestamps, setupComplete, persist]);
 
   const handleDaySelect = useCallback((day: number) => {
     setSelectedDay(day);
@@ -62,7 +131,7 @@ export default function App() {
         <main className="main">
           <div className="setup-panel">
             <h2>Grow Setup</h2>
-            <p className="subtext">Configure your breeder lifecycle and start date. The app will calculate all dynamic windows automatically.</p>
+            <p className="subtext">Configure your breeder lifecycle and start date. The app calculates all dynamic windows automatically.</p>
 
             <div className="setup-form">
               <label>
@@ -134,6 +203,7 @@ export default function App() {
       </header>
 
       <nav className="nav">
+        <button className={tab === 'tracker' ? 'active' : ''} onClick={() => setTab('tracker')}>Tracker</button>
         <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>Setup</button>
         <button className={tab === 'equipment' ? 'active' : ''} onClick={() => setTab('equipment')}>Equipment</button>
         <button className={tab === 'germination' ? 'active' : ''} onClick={() => setTab('germination')}>Germination</button>
@@ -144,6 +214,15 @@ export default function App() {
       </nav>
 
       <main className="main">
+        {tab === 'tracker' && (
+          <AutoTracker
+            currentDay={currentDay}
+            completedCheckpoints={completedCheckpoints}
+            timestamps={timestamps}
+            onToggleCheckpoint={handleToggleCheckpoint}
+          />
+        )}
+
         {tab === 'setup' && (
           <div className="setup-panel">
             <h2>Grow Configuration</h2>

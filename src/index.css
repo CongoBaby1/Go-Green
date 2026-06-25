@@ -959,6 +959,149 @@ h4 {
   font-style: italic;
 }
 
+/* Tracker */
+.tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tracker-header {
+  margin-bottom: 0.5rem;
+}
+
+.tracker-phase {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  transition: border-color 0.15s ease;
+}
+
+.tracker-phase.current {
+  border-color: var(--accent);
+}
+
+.tracker-phase.past {
+  opacity: 0.7;
+}
+
+.phase-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.phase-range {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.checkpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkpoint-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background 0.1s ease;
+}
+
+.checkpoint-row:hover {
+  background: var(--bg-surface);
+}
+
+.checkpoint-row input[type="checkbox"] {
+  margin-top: 0.15rem;
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkpoint-label {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.checkpoint-row.checked .checkpoint-label {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.checkpoint-ts {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.dynamic-output {
+  margin-top: 1rem;
+  background: var(--info-bg);
+  border: 1px solid var(--info);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.dynamic-output h4 {
+  color: var(--info);
+  margin-bottom: 0.5rem;
+}
+
+.dynamic-line {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.guardrail-block {
+  margin-top: 1rem;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.guardrail-block h4 {
+  color: var(--warning);
+  margin-bottom: 0.5rem;
+}
+
+.guardrail-line {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.btn-text {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
+  align-self: flex-start;
+}
+
+.btn-text:hover {
+  color: var(--text-primary);
+}
+
 /* Setup Panel */
 .setup-panel {
   display: flex;
