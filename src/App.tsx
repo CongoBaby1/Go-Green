@@ -6,10 +6,10 @@ import { DayDetail } from './components/DayDetail';
 import { EnvironmentalLogger } from './components/EnvironmentalLogger';
 import { SubzeroProtocol } from './components/SubzeroProtocol';
 import { Guardrails } from './components/Guardrails';
-import { AutoTracker } from './components/AutoTracker';
+import { AUTO_TRACKER_PHASES } from './data/autoTracker';
 import type { EnvironmentalReading } from './data/types';
 
-type Tab = 'tracker' | 'setup' | 'equipment' | 'germination' | 'timeline' | 'logger' | 'subzero' | 'guardrails';
+type Tab = 'timeline' | 'setup' | 'equipment' | 'germination' | 'logger' | 'subzero' | 'guardrails';
 
 function getDaysSince(dateStr: string): number {
   const start = new Date(dateStr);
@@ -44,7 +44,7 @@ function saveState(state: PersistedState) {
 
 export default function App() {
   const saved = loadState();
-  const [tab, setTab] = useState<Tab>(saved?.setupComplete ? 'tracker' : 'setup');
+  const [tab, setTab] = useState<Tab>(saved?.setupComplete ? 'timeline' : 'setup');
   const [breederLifecycle, setBreederLifecycle] = useState(saved?.breederLifecycle || 80);
   const [startDate, setStartDate] = useState(saved?.startDate || '');
   const [currentDay, setCurrentDay] = useState(saved?.currentDay || 1);
@@ -77,7 +77,7 @@ export default function App() {
     const day = startDate ? getDaysSince(startDate) : 1;
     setCurrentDay(day);
     setSetupComplete(true);
-    setTab('tracker');
+    setTab('timeline');
     persist({ setupComplete: true, currentDay: day });
   };
 
@@ -97,7 +97,6 @@ export default function App() {
     });
   }, []);
 
-  // Persist whenever checkpoints/timestamps change
   useEffect(() => {
     if (setupComplete) {
       persist({ completedCheckpoints, timestamps });
@@ -106,12 +105,22 @@ export default function App() {
 
   const handleDaySelect = useCallback((day: number) => {
     setSelectedDay(day);
-    setTab('timeline');
   }, []);
 
   const addReading = useCallback((reading: EnvironmentalReading) => {
     setReadings(prev => [...prev, reading]);
   }, []);
+
+  // Determine which phase a day belongs to
+  const dayPhase = (day: number) => {
+    for (const phase of AUTO_TRACKER_PHASES) {
+      if (phase.phaseEndDay === null && day >= phase.phaseStartDay) return phase;
+      if (day >= phase.phaseStartDay && day <= (phase.phaseEndDay || Infinity)) return phase;
+    }
+    return AUTO_TRACKER_PHASES[AUTO_TRACKER_PHASES.length - 1];
+  };
+
+  const selectedPhase = selectedDay !== null ? dayPhase(selectedDay) : null;
 
   // Dynamic calculations
   const subzeroStart = breederLifecycle - 14;
@@ -132,63 +141,32 @@ export default function App() {
           <div className="setup-panel">
             <h2>Grow Setup</h2>
             <p className="subtext">Configure your breeder lifecycle and start date. The app calculates all dynamic windows automatically.</p>
-
             <div className="setup-form">
               <label>
                 Breeder Lifecycle (days)
-                <input
-                  type="number"
-                  value={breederLifecycle}
-                  onChange={e => setBreederLifecycle(parseInt(e.target.value) || 80)}
-                  min={60}
-                  max={120}
-                />
+                <input type="number" value={breederLifecycle} onChange={e => setBreederLifecycle(parseInt(e.target.value) || 80)} min={60} max={120} />
                 <span className="hint">Projected days from seed to harvest. Common: 75 (fast), 80 (standard), 90 (heavy sativa).</span>
               </label>
-
               <label>
                 Start Date
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                />
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
                 <span className="hint">The day you planted the seed. Leave blank to start from Day 1.</span>
               </label>
             </div>
-
             <div className="setup-preview">
               <h3>Calculated Windows</h3>
               <div className="calc-grid">
-                <div className="calc-item">
-                  <span className="calc-label">Subzero Protocol Starts</span>
-                  <span className="calc-val">Day {subzeroStart}</span>
-                </div>
-                <div className="calc-item">
-                  <span className="calc-label">Dryback Sequence Starts</span>
-                  <span className="calc-val">Day {drybackStart}</span>
-                </div>
-                <div className="calc-item">
-                  <span className="calc-label">Ice Water Flush</span>
-                  <span className="calc-val">Day {iceFlushDay}</span>
-                </div>
-                <div className="calc-item">
-                  <span className="calc-label">Darkness Dump Starts</span>
-                  <span className="calc-val">Day {darknessStart}</span>
-                </div>
-                <div className="calc-item">
-                  <span className="calc-label">Projected Harvest</span>
-                  <span className="calc-val">Day {breederLifecycle}</span>
-                </div>
+                <div className="calc-item"><span className="calc-label">Subzero Protocol Starts</span><span className="calc-val">Day {subzeroStart}</span></div>
+                <div className="calc-item"><span className="calc-label">Dryback Sequence Starts</span><span className="calc-val">Day {drybackStart}</span></div>
+                <div className="calc-item"><span className="calc-label">Ice Water Flush</span><span className="calc-val">Day {iceFlushDay}</span></div>
+                <div className="calc-item"><span className="calc-label">Darkness Dump Starts</span><span className="calc-val">Day {darknessStart}</span></div>
+                <div className="calc-item"><span className="calc-label">Projected Harvest</span><span className="calc-val">Day {breederLifecycle}</span></div>
               </div>
             </div>
-
             <button className="btn-primary" onClick={handleSetup}>Start Grow</button>
           </div>
         </main>
-        <footer className="footer">
-          <p>The trichomes under the loupe always dictate the final timeline, not just the calendar day.</p>
-        </footer>
+        <footer className="footer"><p>The trichomes under the loupe always dictate the final timeline, not just the calendar day.</p></footer>
       </div>
     );
   }
@@ -203,24 +181,39 @@ export default function App() {
       </header>
 
       <nav className="nav">
-        <button className={tab === 'tracker' ? 'active' : ''} onClick={() => setTab('tracker')}>Tracker</button>
+        <button className={tab === 'timeline' ? 'active' : ''} onClick={() => setTab('timeline')}>Timeline</button>
         <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>Setup</button>
         <button className={tab === 'equipment' ? 'active' : ''} onClick={() => setTab('equipment')}>Equipment</button>
         <button className={tab === 'germination' ? 'active' : ''} onClick={() => setTab('germination')}>Germination</button>
-        <button className={tab === 'timeline' ? 'active' : ''} onClick={() => setTab('timeline')}>Timeline</button>
         <button className={tab === 'logger' ? 'active' : ''} onClick={() => setTab('logger')}>Logger</button>
         <button className={tab === 'subzero' ? 'active' : ''} onClick={() => setTab('subzero')}>Subzero</button>
         <button className={tab === 'guardrails' ? 'active' : ''} onClick={() => setTab('guardrails')}>Guardrails</button>
       </nav>
 
       <main className="main">
-        {tab === 'tracker' && (
-          <AutoTracker
-            currentDay={currentDay}
-            completedCheckpoints={completedCheckpoints}
-            timestamps={timestamps}
-            onToggleCheckpoint={handleToggleCheckpoint}
-          />
+        {tab === 'timeline' && (
+          <>
+            <GrowTimeline
+              currentDay={currentDay}
+              selectedDay={selectedDay}
+              onSelectDay={handleDaySelect}
+              subzeroActive={subzeroActive}
+              breederLifecycle={breederLifecycle}
+            />
+            {selectedDay !== null && (
+              <DayDetail
+                day={selectedDay}
+                currentDay={currentDay}
+                onSetCurrentDay={setCurrentDay}
+                subzeroActive={subzeroActive}
+                breederLifecycle={breederLifecycle}
+                phase={selectedPhase}
+                completedCheckpoints={completedCheckpoints}
+                onToggleCheckpoint={handleToggleCheckpoint}
+                timestamps={timestamps}
+              />
+            )}
+          </>
         )}
 
         {tab === 'setup' && (
@@ -229,21 +222,11 @@ export default function App() {
             <div className="setup-form">
               <label>
                 Breeder Lifecycle (days)
-                <input
-                  type="number"
-                  value={breederLifecycle}
-                  onChange={e => setBreederLifecycle(parseInt(e.target.value) || 80)}
-                  min={60}
-                  max={120}
-                />
+                <input type="number" value={breederLifecycle} onChange={e => setBreederLifecycle(parseInt(e.target.value) || 80)} min={60} max={120} />
               </label>
               <label>
                 Start Date
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                />
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
               </label>
               <button className="btn-primary" onClick={handleSetup}>Update Calculations</button>
             </div>
@@ -262,50 +245,9 @@ export default function App() {
         )}
 
         {tab === 'equipment' && <EquipmentChecklist />}
-
-        {tab === 'germination' && (
-          <GerminationSelector
-            selectedPath={germPath}
-            onSelectPath={setGermPath}
-          />
-        )}
-
-        {tab === 'timeline' && (
-          <GrowTimeline
-            currentDay={currentDay}
-            selectedDay={selectedDay}
-            onSelectDay={handleDaySelect}
-            subzeroActive={subzeroActive}
-            breederLifecycle={breederLifecycle}
-          />
-        )}
-
-        {tab === 'timeline' && selectedDay !== null && (
-          <DayDetail
-            day={selectedDay}
-            currentDay={currentDay}
-            onSetCurrentDay={setCurrentDay}
-            subzeroActive={subzeroActive}
-          />
-        )}
-
-        {tab === 'logger' && (
-          <EnvironmentalLogger
-            readings={readings}
-            onAddReading={addReading}
-            currentDay={currentDay}
-          />
-        )}
-
-        {tab === 'subzero' && (
-          <SubzeroProtocol
-            active={subzeroActive}
-            onToggle={() => setSubzeroActive(v => !v)}
-            currentDay={currentDay}
-            breederLifecycle={breederLifecycle}
-          />
-        )}
-
+        {tab === 'germination' && <GerminationSelector selectedPath={germPath} onSelectPath={setGermPath} />}
+        {tab === 'logger' && <EnvironmentalLogger readings={readings} onAddReading={addReading} currentDay={currentDay} />}
+        {tab === 'subzero' && <SubzeroProtocol active={subzeroActive} onToggle={() => setSubzeroActive(v => !v)} currentDay={currentDay} breederLifecycle={breederLifecycle} />}
         {tab === 'guardrails' && <Guardrails />}
       </main>
 
