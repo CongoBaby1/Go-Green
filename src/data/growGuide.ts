@@ -8,7 +8,7 @@ export const EQUIPMENT_LIST: EquipmentItem[] = [
   { id: 'uvb', name: 'UVB Light Fixture', description: 'Supplementary UVB for late-flower trichome induction.', required: true },
   { id: 'loupe', name: 'Jewelers Loupe / Microscope', description: '60x-100x magnification for trichome maturity assessment.', required: true },
   { id: 'water', name: 'Dechlorinated Tap Water', description: 'Bubble or let sit 24 hours before use.', required: true },
-  { id: 'recharge', name: 'Recharge Microbial Inoculant', description: 'Premium microbial additive for soil biology.', required: true },
+  { id: 'recharge', name: 'Real Growers Recharge', description: 'Premium microbial additive for soil biology.', required: true },
   { id: 'bloom-dress', name: 'DNC Bloom Top Dressing', description: 'Great Lakes Bloom Top Dressing for flower boost.', required: true },
 ];
 
