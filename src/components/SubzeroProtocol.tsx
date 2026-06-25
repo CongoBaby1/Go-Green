@@ -4,16 +4,53 @@ interface Props {
   active: boolean;
   onToggle: () => void;
   currentDay: number;
+  breederLifecycle: number;
 }
 
-export function SubzeroProtocol({ active, onToggle, currentDay: _currentDay }: Props) {
+export function SubzeroProtocol({ active, onToggle, currentDay, breederLifecycle }: Props) {
+  const subzeroStart = breederLifecycle - 14;
+  const drybackStart = breederLifecycle - 7;
+  const iceFlushDay = breederLifecycle - 3;
+  const darknessStart = breederLifecycle - 2;
+
+  const daysToSubzero = subzeroStart - currentDay;
+  const daysToDryback = drybackStart - currentDay;
+  const daysToIce = iceFlushDay - currentDay;
+  const daysToDark = darknessStart - currentDay;
+  const daysToHarvest = breederLifecycle - currentDay;
+
   return (
     <div className="subzero-protocol">
       <h2>Subzero Late-Flower Frost Protocol</h2>
       <p className="subtext">
-        Trigger this protocol strictly in the LAST 14 DAYS before harvest.
+        Triggered dynamically based on your breeder lifecycle of {breederLifecycle} days.
         Genetics must be stable. Wear UV eyewear.
       </p>
+
+      <div className="setup-preview">
+        <div className="calc-grid">
+          <div className="calc-item">
+            <span className="calc-label">Subzero Protocol Starts</span>
+            <span className="calc-val">Day {subzeroStart} {daysToSubzero > 0 && `(${daysToSubzero}d away)`} {daysToSubzero <= 0 && daysToSubzero > -14 && '(ACTIVE)'}</span>
+          </div>
+          <div className="calc-item">
+            <span className="calc-label">Dryback Sequence Starts</span>
+            <span className="calc-val">Day {drybackStart} {daysToDryback > 0 && `(${daysToDryback}d away)`} {daysToDryback <= 0 && daysToDryback > -7 && '(ACTIVE)'}</span>
+          </div>
+          <div className="calc-item">
+            <span className="calc-label">Ice Water Flush</span>
+            <span className="calc-val">Day {iceFlushDay} {daysToIce > 0 && `(${daysToIce}d away)`} {daysToIce <= 0 && daysToIce > -3 && '(ACTIVE)'}</span>
+          </div>
+          <div className="calc-item">
+            <span className="calc-label">Darkness Dump Starts</span>
+            <span className="calc-val">Day {darknessStart} {daysToDark > 0 && `(${daysToDark}d away)`} {daysToDark <= 0 && daysToDark > -2 && '(ACTIVE)'}</span>
+          </div>
+          <div className="calc-item">
+            <span className="calc-label">Projected Harvest</span>
+            <span className="calc-val">Day {breederLifecycle} {daysToHarvest > 0 && `(${daysToHarvest}d away)`} {daysToHarvest <= 0 && '(REACHED)'}</span>
+          </div>
+        </div>
+      </div>
 
       <div className="subzero-toggle">
         <button
@@ -26,7 +63,7 @@ export function SubzeroProtocol({ active, onToggle, currentDay: _currentDay }: P
 
       {!active && (
         <div className="subzero-preview">
-          <h3>Protocol Overview (14 Days)</h3>
+          <h3>Protocol Overview (14 Days Before Harvest)</h3>
           <ul className="protocol-list">
             <li><strong>Days 1-7:</strong> UVB Light Blast (2-4h daily) + 10F Night Temp Drop</li>
             <li><strong>Days 8-11:</strong> Extreme Drybacks — halt regular watering, controlled drought</li>

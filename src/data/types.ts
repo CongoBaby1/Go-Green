@@ -1,3 +1,9 @@
+export interface GrowSetup {
+  breederLifecycle: number;
+  startDate: string;
+  currentDay: number;
+}
+
 export interface EquipmentItem {
   id: string;
   name: string;
