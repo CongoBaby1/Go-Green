@@ -15,7 +15,7 @@ export const EQUIPMENT_LIST: EquipmentItem[] = [
 export const GERMINATION_PATHS: GerminationPath[] = [
   {
     id: 'direct',
-    name: 'Option A: Direct Potting (Starter Pocket)',
+    name: 'Option A: Direct Potting (seed directly in final pot)',
     steps: [
       {
         step: 1,
@@ -59,7 +59,7 @@ export const GERMINATION_PATHS: GerminationPath[] = [
   },
   {
     id: 'transplant',
-    name: 'Option B: Solo Cup to 7-Gallon (Cyclops)',
+    name: 'Option B: Cyclops Method (seed in solo cup / starter pot)',
     steps: [
       {
         step: 1,

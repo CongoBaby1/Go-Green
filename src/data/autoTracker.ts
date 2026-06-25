@@ -9,8 +9,8 @@ export const AUTO_TRACKER_PHASES: TrackerPhase[] = [
     checkpoints: [
       { id: 'seed-soak', label: 'Seed placed in 24-48 hour water soak', checked: false },
       { id: 'taproot', label: 'Taproot emerged', checked: false },
-      { id: 'option-a', label: 'Selected Option A: Direct Potting (Starter Pocket filled with mild peat mix)', checked: false },
-      { id: 'option-b', label: 'Selected Option B: Chad Cyclops Method (Placeholder Solo cup buried in 7-gal DNC soil)', checked: false },
+      { id: 'option-a', label: 'Selected Option A: Direct Potting (seed directly in final pot)', checked: false },
+      { id: 'option-b', label: 'Selected Option B: Cyclops Method (seed in solo cup / starter pot)', checked: false },
       { id: 'sprout-day-1', label: 'Seedling broke the surface (Sprout Day 1)', checked: false },
     ],
     dynamicOutput: [
