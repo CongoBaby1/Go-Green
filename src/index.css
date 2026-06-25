@@ -839,3 +839,122 @@ h4 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Seed Selector */
+.seed-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem 0;
+}
+
+.seed-selector h2 {
+  font-size: 1.5rem;
+}
+
+.seed-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 800px;
+}
+
+.seed-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: left;
+  color: var(--text-primary);
+  font-family: var(--font);
+  transition: all 0.15s ease;
+}
+
+.seed-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.seed-card.auto:hover {
+  border-color: var(--accent);
+}
+
+.seed-card.photo:hover {
+  border-color: var(--info);
+  background: var(--info-bg);
+}
+
+.seed-label {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.seed-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.seed-features {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+}
+
+/* Photoperiod app accent override */
+.photo-app .logo {
+  color: var(--info);
+}
+
+.photo-app .btn-primary {
+  background: var(--info);
+  color: var(--bg-base);
+}
+
+.photo-app .btn-primary:hover {
+  background: #22d3ee;
+}
+
+.photo-banner {
+  background: var(--info-bg);
+  border: 1px solid var(--info);
+  color: var(--info);
+}
+
+.trigger-badge {
+  background: var(--warning);
+  color: var(--bg-base);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  display: inline-block;
+}
+
+.locked {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.locked-dot {
+  background: var(--border);
+  opacity: 0.5;
+}
+
+.past-label {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-style: italic;
+}
