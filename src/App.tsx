@@ -9,7 +9,7 @@ import { Guardrails } from './components/Guardrails';
 import { AUTO_TRACKER_PHASES } from './data/autoTracker';
 import type { EnvironmentalReading } from './data/types';
 
-type Tab = 'timeline' | 'setup' | 'equipment' | 'germination' | 'logger' | 'subzero' | 'guardrails';
+type Tab = 'timeline' | 'setup' | 'equipment' | 'germination' | 'vegetative' | 'flower' | 'logger' | 'subzero' | 'guardrails';
 
 function getDaysSince(dateStr: string): number {
   const start = new Date(dateStr);
@@ -112,21 +112,60 @@ export default function App() {
   }, []);
 
   // Determine which phase a day belongs to
-  const dayPhase = (day: number) => {
-    for (const phase of AUTO_TRACKER_PHASES) {
-      if (phase.phaseEndDay === null && day >= phase.phaseStartDay) return phase;
-      if (day >= phase.phaseStartDay && day <= (phase.phaseEndDay || Infinity)) return phase;
-    }
-    return AUTO_TRACKER_PHASES[AUTO_TRACKER_PHASES.length - 1];
-  };
-
-  const selectedPhase = selectedDay !== null ? dayPhase(selectedDay) : null;
-
   // Dynamic calculations
   const subzeroStart = breederLifecycle - 14;
   const drybackStart = breederLifecycle - 7;
   const iceFlushDay = breederLifecycle - 3;
   const darknessStart = breederLifecycle - 2;
+
+  const renderPhaseChecklist = (phaseIndex: number) => {
+    const phase = AUTO_TRACKER_PHASES[phaseIndex];
+    if (!phase) return null;
+    return (
+      <div className="phase-checklist">
+        <div className="checklist-header">
+          <h3>{phase.phaseName}</h3>
+          <span className="phase-range">
+            {phase.phaseEndDay
+              ? `Days ${phase.phaseStartDay}–${phase.phaseEndDay}`
+              : `Days ${phase.phaseStartDay}+`}
+          </span>
+        </div>
+        <div className="checkpoints">
+          {phase.checkpoints.map(cp => {
+            const checked = !!completedCheckpoints[cp.id];
+            return (
+              <label key={cp.id} className={`checkpoint-row ${checked ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => handleToggleCheckpoint(cp.id)}
+                />
+                <span className="checkpoint-label">{cp.label}</span>
+                {timestamps[cp.id] && <span className="checkpoint-ts">{timestamps[cp.id]}</span>}
+              </label>
+            );
+          })}
+        </div>
+        {phase.dynamicOutput && phase.dynamicOutput.length > 0 && (
+          <div className="dynamic-output">
+            <h4>Dynamic Output</h4>
+            {phase.dynamicOutput.map((out, i) => (
+              <p key={i} className="dynamic-line">{out}</p>
+            ))}
+          </div>
+        )}
+        {phase.guardrail && phase.guardrail.length > 0 && (
+          <div className="guardrail-block">
+            <h4>Automated Guardrail</h4>
+            {phase.guardrail.map((g, i) => (
+              <p key={i} className="guardrail-line">{g}</p>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (!setupComplete) {
     return (
@@ -185,6 +224,8 @@ export default function App() {
         <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>Setup</button>
         <button className={tab === 'equipment' ? 'active' : ''} onClick={() => setTab('equipment')}>Equipment</button>
         <button className={tab === 'germination' ? 'active' : ''} onClick={() => setTab('germination')}>Germination</button>
+        <button className={tab === 'vegetative' ? 'active' : ''} onClick={() => setTab('vegetative')}>Vegetative</button>
+        <button className={tab === 'flower' ? 'active' : ''} onClick={() => setTab('flower')}>Flower</button>
         <button className={tab === 'logger' ? 'active' : ''} onClick={() => setTab('logger')}>Logger</button>
         <button className={tab === 'subzero' ? 'active' : ''} onClick={() => setTab('subzero')}>Subzero</button>
         <button className={tab === 'guardrails' ? 'active' : ''} onClick={() => setTab('guardrails')}>Guardrails</button>
@@ -207,10 +248,6 @@ export default function App() {
                 onSetCurrentDay={setCurrentDay}
                 subzeroActive={subzeroActive}
                 breederLifecycle={breederLifecycle}
-                phase={selectedPhase}
-                completedCheckpoints={completedCheckpoints}
-                onToggleCheckpoint={handleToggleCheckpoint}
-                timestamps={timestamps}
               />
             )}
           </>
@@ -245,7 +282,20 @@ export default function App() {
         )}
 
         {tab === 'equipment' && <EquipmentChecklist />}
-        {tab === 'germination' && <GerminationSelector selectedPath={germPath} onSelectPath={setGermPath} />}
+
+        {tab === 'germination' && (
+          <GerminationSelector
+            selectedPath={germPath}
+            onSelectPath={setGermPath}
+            completedCheckpoints={completedCheckpoints}
+            timestamps={timestamps}
+            onToggleCheckpoint={handleToggleCheckpoint}
+          />
+        )}
+
+        {tab === 'vegetative' && renderPhaseChecklist(1)}
+        {tab === 'flower' && renderPhaseChecklist(2)}
+
         {tab === 'logger' && <EnvironmentalLogger readings={readings} onAddReading={addReading} currentDay={currentDay} />}
         {tab === 'subzero' && <SubzeroProtocol active={subzeroActive} onToggle={() => setSubzeroActive(v => !v)} currentDay={currentDay} breederLifecycle={breederLifecycle} />}
         {tab === 'guardrails' && <Guardrails />}

@@ -1,5 +1,4 @@
 import { GROW_DAYS, SUBZERO_DAYS } from '../data/growGuide';
-import type { TrackerPhase } from '../data/trackerTypes';
 
 interface Props {
   day: number;
@@ -7,13 +6,9 @@ interface Props {
   onSetCurrentDay: (day: number) => void;
   subzeroActive: boolean;
   breederLifecycle: number;
-  phase?: TrackerPhase | null;
-  completedCheckpoints?: Record<string, boolean>;
-  onToggleCheckpoint?: (checkpointId: string) => void;
-  timestamps?: Record<string, string>;
 }
 
-export function DayDetail({ day, currentDay, onSetCurrentDay, subzeroActive, breederLifecycle, phase, completedCheckpoints, onToggleCheckpoint, timestamps }: Props) {
+export function DayDetail({ day, currentDay, onSetCurrentDay, subzeroActive, breederLifecycle }: Props) {
   const timelineDays = subzeroActive ? SUBZERO_DAYS : GROW_DAYS;
   const dayData = timelineDays.find(d => d.day === day);
 
@@ -41,71 +36,33 @@ export function DayDetail({ day, currentDay, onSetCurrentDay, subzeroActive, bre
 
   return (
     <div className="day-detail">
-      <div className="day-header">
+      <div className="day-detail-header">
         <h2>
           Day {day}
           {isDynamicDay(day) && <span className="day-label"> — {dayLabel(day)}</span>}
         </h2>
-        <span className={`badge ${isToday ? 'current' : day < currentDay ? 'past' : 'upcoming'}`}>
+        <span className={`stage-badge ${isToday ? 'current' : day < currentDay ? 'past' : 'upcoming'}`}>
           {isToday ? 'Current Day' : day < currentDay ? 'Past' : 'Upcoming'}
         </span>
       </div>
 
       <div className="detail-section">
-        <h3>Stage: {dayData.stage}</h3>
-        <p>{dayData.title}</p>
+        <h3>{dayData.title}</h3>
+        <p className="stage-name">Stage: {dayData.stage}</p>
         <ul>
           {dayData.instructions.map((inst, i) => (
             <li key={i}>{inst}</li>
           ))}
         </ul>
         {dayData.warnings && (
-          <div className="warning-block">
+          <div className="detail-section warning">
+            <h3>Critical Warning</h3>
             {dayData.warnings.map((w, i) => (
               <p key={i}>{w}</p>
             ))}
           </div>
         )}
       </div>
-
-      {/* Phase-specific checklist integrated into day detail */}
-      {phase && onToggleCheckpoint && completedCheckpoints && (
-        <div className="day-checklist">
-          <h3>Milestones & Tasks</h3>
-          <div className="checkpoints">
-            {phase.checkpoints.map(cp => {
-              const checked = !!completedCheckpoints[cp.id];
-              return (
-                <label key={cp.id} className={`checkpoint-row ${checked ? 'checked' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => onToggleCheckpoint(cp.id)}
-                  />
-                  <span className="checkpoint-label">{cp.label}</span>
-                  {timestamps?.[cp.id] && <span className="checkpoint-ts">{timestamps[cp.id]}</span>}
-                </label>
-              );
-            })}
-          </div>
-          {phase.dynamicOutput && phase.dynamicOutput.length > 0 && (
-            <div className="dynamic-output">
-              <h4>Dynamic Output</h4>
-              {phase.dynamicOutput.map((out, i) => (
-                <p key={i} className="dynamic-line">{out}</p>
-              ))}
-            </div>
-          )}
-          {phase.guardrail && phase.guardrail.length > 0 && (
-            <div className="guardrail-block">
-              <h4>Automated Guardrail</h4>
-              {phase.guardrail.map((g, i) => (
-                <p key={i} className="guardrail-line">{g}</p>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {isToday && (
         <div className="actions">
