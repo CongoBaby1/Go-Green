@@ -74,17 +74,31 @@ export default function AuthScreen({ onAuth }: AuthScreenProps) {
       onAuth(profile);
     } catch (err: any) {
       console.error('[Firebase Auth]', err);
+      const code = err?.code || '';
       const msg = err?.message || '';
-      if (msg.includes('email-already-in-use')) {
+      if (code === 'auth/email-already-in-use' || msg.includes('email-already-in-use')) {
         setErrorMsg('That email is already registered. Try signing in instead.');
-      } else if (msg.includes('invalid-credential') || msg.includes('wrong-password') || msg.includes('user-not-found')) {
+      } else if (code === 'auth/invalid-credential' || msg.includes('invalid-credential')) {
         setErrorMsg('Invalid email or password. Please check and try again.');
-      } else if (msg.includes('weak-password')) {
+      } else if (code === 'auth/wrong-password' || msg.includes('wrong-password')) {
+        setErrorMsg('Incorrect password. Please try again.');
+      } else if (code === 'auth/user-not-found' || msg.includes('user-not-found')) {
+        setErrorMsg('No account found with that email. Sign up first.');
+      } else if (code === 'auth/weak-password' || msg.includes('weak-password')) {
         setErrorMsg('Password is too weak. Use at least 6 characters.');
-      } else if (msg.includes('invalid-email')) {
+      } else if (code === 'auth/invalid-email' || msg.includes('invalid-email')) {
         setErrorMsg('Please enter a valid email address.');
+      } else if (code === 'auth/operation-not-allowed' || msg.includes('operation-not-allowed')) {
+        setErrorMsg('Email/password sign-in is not enabled in Firebase Console. Contact admin.');
+      } else if (code === 'auth/api-key-not-valid' || msg.includes('api-key')) {
+        setErrorMsg('Firebase API key error. Check project config and domain whitelist.');
+      } else if (code === 'auth/network-request-failed' || msg.includes('network')) {
+        setErrorMsg('Network error. Check your internet connection and try again.');
+      } else if (code === 'auth/too-many-requests' || msg.includes('too-many-requests')) {
+        setErrorMsg('Too many attempts. Wait a moment and try again.');
       } else {
-        setErrorMsg('Authentication failed. Please try again.');
+        // Show raw error for debugging if unrecognized
+        setErrorMsg(`Auth error: ${code || msg || 'Unknown error. Please try again.'}`);
       }
     } finally {
       setIsSubmitting(false);
