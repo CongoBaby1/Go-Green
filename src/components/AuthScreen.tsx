@@ -95,7 +95,7 @@ export default function AuthScreen({ onAuth }: AuthScreenProps) {
     <div className="auth-screen">
       <div className="auth-card">
         <h2>Go Green</h2>
-        <p className="auth-sub">Elite Autoflower Grow Guide</p>
+        <p className="auth-sub">Elite Cannabis Grow Guide</p>
 
         <div className="auth-toggle">
           <button
