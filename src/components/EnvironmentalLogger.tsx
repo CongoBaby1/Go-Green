@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import type { EnvironmentalReading } from '../data/types';
+import type { EnvironmentalReading, FeedingEvent } from '../data/types';
 
 interface Props {
   readings: EnvironmentalReading[];
   onAddReading: (reading: EnvironmentalReading) => void;
   currentDay: number;
+  feedings: FeedingEvent[];
+  onAddFeeding: (feeding: FeedingEvent) => void;
 }
 
 function getPhaseTargets(currentDay: number) {
@@ -42,16 +44,19 @@ function checkRange(label: string, val: number, range: { min: number; max: numbe
   return null;
 }
 
-export function EnvironmentalLogger({ readings, onAddReading, currentDay }: Props) {
+export function EnvironmentalLogger({ readings, onAddReading, currentDay, feedings, onAddFeeding }: Props) {
   const [temp, setTemp] = useState('');
   const [humidity, setHumidity] = useState('');
   const [tension, setTension] = useState('');
   const [water, setWater] = useState('');
   const [notes, setNotes] = useState('');
 
+  const [feedAction, setFeedAction] = useState('');
+  const [feedNotes, setFeedNotes] = useState('');
+
   const targets = getPhaseTargets(currentDay);
 
-  const submit = () => {
+  const submitReading = () => {
     const reading: EnvironmentalReading = {
       date: new Date().toISOString().split('T')[0],
       temperature: parseFloat(temp) || 0,
@@ -66,6 +71,19 @@ export function EnvironmentalLogger({ readings, onAddReading, currentDay }: Prop
     setTension('');
     setWater('');
     setNotes('');
+  };
+
+  const submitFeeding = () => {
+    if (!feedAction.trim()) return;
+    const feeding: FeedingEvent = {
+      date: new Date().toISOString().split('T')[0],
+      day: currentDay,
+      action: feedAction.trim(),
+      notes: feedNotes.trim(),
+    };
+    onAddFeeding(feeding);
+    setFeedAction('');
+    setFeedNotes('');
   };
 
   const avg = (key: keyof EnvironmentalReading) => {
@@ -85,6 +103,8 @@ export function EnvironmentalLogger({ readings, onAddReading, currentDay }: Prop
     const w = checkRange('Water (mL)', latest.wateringMl, targets.water);
     if (w) warnings.push(w);
   }
+
+  const lastFeeding = feedings[feedings.length - 1];
 
   return (
     <div className="env-logger">
@@ -131,7 +151,7 @@ export function EnvironmentalLogger({ readings, onAddReading, currentDay }: Prop
           Notes
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
         </label>
-        <button className="btn-primary" onClick={submit}>Log Reading</button>
+        <button className="btn-primary" onClick={submitReading}>Log Reading</button>
       </div>
 
       {readings.length > 0 && (
@@ -177,6 +197,64 @@ export function EnvironmentalLogger({ readings, onAddReading, currentDay }: Prop
           </div>
         </div>
       )}
+
+      <div className="feeding-log">
+        <h2>Feeding Log</h2>
+        <p className="subtext">Record each tea application, bloom booster, or plain water event.</p>
+
+        {lastFeeding && (
+          <div className="last-feeding">
+            <span className="last-label">Last Feeding:</span>
+            <span className="last-val">{lastFeeding.action} on Day {lastFeeding.day} ({lastFeeding.date})</span>
+          </div>
+        )}
+
+        <div className="feed-form">
+          <label>
+            Action
+            <select value={feedAction} onChange={e => setFeedAction(e.target.value)}>
+              <option value="">Select...</option>
+              <option value="Tea Applied">Tea Applied</option>
+              <option value="Bloom Booster">Bloom Booster</option>
+              <option value="Plain Water">Plain Water</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label className="notes-label">
+            Notes
+            <textarea value={feedNotes} onChange={e => setFeedNotes(e.target.value)} rows={2} placeholder="Optional details..." />
+          </label>
+          <button className="btn-primary" onClick={submitFeeding}>Log Feeding</button>
+        </div>
+
+        {feedings.length > 0 && (
+          <div className="feed-history">
+            <h3>Feeding History</h3>
+            <div className="history-table-wrap">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Action</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...feedings].reverse().map((f, i) => (
+                    <tr key={i}>
+                      <td>{f.date}</td>
+                      <td>Day {f.day}</td>
+                      <td>{f.action}</td>
+                      <td>{f.notes || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

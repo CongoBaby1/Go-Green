@@ -44,6 +44,13 @@ export interface EnvironmentalReading {
   notes: string;
 }
 
+export interface FeedingEvent {
+  date: string;
+  day: number;
+  action: string;
+  notes: string;
+}
+
 export interface PersistedState {
   breederLifecycle: number;
   startDate: string;
@@ -54,6 +61,7 @@ export interface PersistedState {
   germPath: 'direct' | 'transplant' | null;
   subzeroActive: boolean;
   readings: EnvironmentalReading[];
+  feedings: FeedingEvent[];
 }
 
 export interface UserProfile {

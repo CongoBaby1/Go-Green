@@ -74,6 +74,7 @@ export async function loadGrowState(uid: string): Promise<PersistedState | null>
       germPath: data.germPath ?? null,
       subzeroActive: data.subzeroActive ?? false,
       readings: data.readings ?? [],
+      feedings: data.feedings ?? [],
     };
     return state;
   }

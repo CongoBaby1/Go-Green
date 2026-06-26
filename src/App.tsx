@@ -5,7 +5,7 @@ import { EnvironmentalLogger } from './components/EnvironmentalLogger';
 import { SubzeroProtocol } from './components/SubzeroProtocol';
 import { Guardrails } from './components/Guardrails';
 import { AUTO_TRACKER_PHASES } from './data/autoTracker';
-import type { EnvironmentalReading, PersistedState, UserProfile } from './data/types';
+import type { EnvironmentalReading, FeedingEvent, PersistedState, UserProfile } from './data/types';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { loadGrowState, saveGrowState, loadUserProfile } from './services/firestoreService';
@@ -47,6 +47,7 @@ export default function App() {
   const [germPath, setGermPath] = useState<'direct' | 'transplant' | null>(saved?.germPath || null);
   const [subzeroActive, setSubzeroActive] = useState(saved?.subzeroActive || false);
   const [readings, setReadings] = useState<EnvironmentalReading[]>(saved?.readings || []);
+  const [feedings, setFeedings] = useState<FeedingEvent[]>(saved?.feedings || []);
   const [setupComplete, setSetupComplete] = useState(saved?.setupComplete || false);
   const [completedCheckpoints, setCompletedCheckpoints] = useState<Record<string, boolean>>(
     saved?.completedCheckpoints || {}
@@ -87,6 +88,7 @@ export default function App() {
             setGermPath(cloudState.germPath);
             setSubzeroActive(cloudState.subzeroActive);
             setReadings(cloudState.readings);
+            setFeedings(cloudState.feedings || []);
           } else {
             // First login — migrate any localStorage data to Firestore
             const local = loadLocalState();
@@ -118,7 +120,8 @@ export default function App() {
     germPath,
     subzeroActive,
     readings,
-  }), [breederLifecycle, startDate, currentDay, completedCheckpoints, timestamps, setupComplete, germPath, subzeroActive, readings]);
+    feedings,
+  }), [breederLifecycle, startDate, currentDay, completedCheckpoints, timestamps, setupComplete, germPath, subzeroActive, readings, feedings]);
 
   // Persist to Firestore + localStorage fallback
   const persist = useCallback(async (updates: Partial<PersistedState>) => {
@@ -213,6 +216,14 @@ export default function App() {
     });
   }, [persist]);
 
+  const addFeeding = useCallback((feeding: FeedingEvent) => {
+    setFeedings(prev => {
+      const next = [...prev, feeding];
+      persist({ feedings: next });
+      return next;
+    });
+  }, [persist]);
+
   const handleLogout = async () => {
     await signOut(auth);
     setUser(null);
@@ -226,6 +237,7 @@ export default function App() {
     setSetupComplete(false);
     setCompletedCheckpoints({});
     setTimestamps({});
+    setFeedings([]);
   };
 
   // Show auth screen until Firebase auth initializes
@@ -248,6 +260,29 @@ export default function App() {
   const drybackStart = breederLifecycle - 7;
   const iceFlushDay = breederLifecycle - 3;
   const darknessStart = breederLifecycle - 2;
+
+  const getTeaBanner = (): { text: string; action: string; type: 'info' | 'warning' | 'critical' } | null => {
+    if (!setupComplete) return null;
+    if (currentDay <= 14) {
+      return { text: 'Skip the tea. Use plain water only. Seedling needs time to establish roots.', action: 'Plain Water', type: 'info' };
+    }
+    if (currentDay <= 21) {
+      return { text: 'First Application: Top-water with tea mix once this week. Fuel root growth post-training.', action: 'Tea Applied', type: 'info' };
+    }
+    if (currentDay <= 28) {
+      return { text: 'Second Application: Top-water with tea mix once this week. Build microbial population before transition.', action: 'Tea Applied', type: 'info' };
+    }
+    if (currentDay <= 34) {
+      return { text: 'Prep for Bloom Booster. Continue plain water.', action: 'Plain Water', type: 'info' };
+    }
+    if (currentDay === 35) {
+      return { text: 'Bloom Booster Kick: Scratch DNC Bloom Top Dressing into top inch of soil, then water in heavily with tea batch.', action: 'Bloom Booster', type: 'critical' };
+    }
+    if (currentDay <= 49) {
+      return { text: 'Peak Flower Swell: Top-water with tea mix once per week. Maximize bud density and unlock phosphorus.', action: 'Tea Applied', type: 'info' };
+    }
+    return { text: 'Stop the tea. Plain water only until final dryback and chop.', action: 'Plain Water', type: 'warning' };
+  };
 
   const renderPhaseChecklist = (phaseIndex: number) => {
     const phase = AUTO_TRACKER_PHASES[phaseIndex];
@@ -373,17 +408,41 @@ export default function App() {
         )}
 
         {tab === 'germination' && (
-          <GerminationSelector
-            selectedPath={germPath}
-            onSelectPath={(path) => { setGermPath(path); persist({ germPath: path }); }}
-            completedCheckpoints={completedCheckpoints}
-            timestamps={timestamps}
-            onToggleCheckpoint={handleToggleCheckpoint}
-          />
+          <>
+            {(() => {
+              const tea = getTeaBanner();
+              if (!tea || !setupComplete) return null;
+              return (
+                <div className={`banner tea-banner tea-${tea.type}`}>
+                  <div className="tea-text">{tea.text}</div>
+                  <div className="tea-warn">Saturate top 2-3 inches only. Do not flush into bottom reservoir.</div>
+                  <button className="btn-text" onClick={() => addFeeding({ date: new Date().toISOString().split('T')[0], day: currentDay, action: tea.action, notes: '' })}>Log {tea.action}</button>
+                </div>
+              );
+            })()}
+            <GerminationSelector
+              selectedPath={germPath}
+              onSelectPath={(path) => { setGermPath(path); persist({ germPath: path }); }}
+              completedCheckpoints={completedCheckpoints}
+              timestamps={timestamps}
+              onToggleCheckpoint={handleToggleCheckpoint}
+            />
+          </>
         )}
 
         {tab === 'vegetative' && (
           <>
+            {(() => {
+              const tea = getTeaBanner();
+              if (!tea || !setupComplete) return null;
+              return (
+                <div className={`banner tea-banner tea-${tea.type}`}>
+                  <div className="tea-text">{tea.text}</div>
+                  <div className="tea-warn">Saturate top 2-3 inches only. Do not flush into bottom reservoir.</div>
+                  <button className="btn-text" onClick={() => addFeeding({ date: new Date().toISOString().split('T')[0], day: currentDay, action: tea.action, notes: '' })}>Log {tea.action}</button>
+                </div>
+              );
+            })()}
             {currentDay > 16 && !completedCheckpoints['pathway-1'] && !completedCheckpoints['pathway-2'] && (
               <div className="banner guardrail-critical">
                 <strong>CRITICAL — Past Safe Topping Window.</strong> Autoflower countdown clock ticking. Execute <strong>Pathway 2 (Soft LST Bending)</strong> immediately to prevent vertical Christmas-tree stretching.
@@ -394,6 +453,17 @@ export default function App() {
         )}
         {tab === 'flower' && (
           <>
+            {(() => {
+              const tea = getTeaBanner();
+              if (!tea || !setupComplete) return null;
+              return (
+                <div className={`banner tea-banner tea-${tea.type}`}>
+                  <div className="tea-text">{tea.text}</div>
+                  <div className="tea-warn">Saturate top 2-3 inches only. Do not flush into bottom reservoir.</div>
+                  <button className="btn-text" onClick={() => addFeeding({ date: new Date().toISOString().split('T')[0], day: currentDay, action: tea.action, notes: '' })}>Log {tea.action}</button>
+                </div>
+              );
+            })()}
             {currentDay >= 30 && (
               <div className="banner guardrail-warning">
                 <strong>Pruning Locked.</strong> Flowering active past Day 30. Any pruning or lollipopping now will stunt yields. Focus strictly on watering and light.
@@ -415,7 +485,7 @@ export default function App() {
           </>
         )}
 
-        {tab === 'logger' && <EnvironmentalLogger readings={readings} onAddReading={addReading} currentDay={currentDay} />}
+        {tab === 'logger' && <EnvironmentalLogger readings={readings} onAddReading={addReading} currentDay={currentDay} feedings={feedings} onAddFeeding={addFeeding} />}
         {tab === 'guardrails' && <Guardrails />}
       </main>
 
