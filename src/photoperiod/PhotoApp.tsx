@@ -120,7 +120,7 @@ export default function PhotoApp() {
           />
         )}
 
-        {tab === 'equipment' && <PhotoEquipmentChecklist />}
+        {tab === 'equipment' && <PhotoEquipmentChecklist completedCheckpoints={completedCheckpoints} onToggleCheckpoint={handleToggleCheckpoint} />}
 
         {tab === 'germination' && (
           <PhotoGerminationSelector
