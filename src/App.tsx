@@ -7,7 +7,7 @@ import { Guardrails } from './components/Guardrails';
 import { AUTO_TRACKER_PHASES } from './data/autoTracker';
 import type { EnvironmentalReading } from './data/types';
 
-type Tab = 'equipment' | 'setup' | 'germination' | 'vegetative' | 'flower' | 'logger' | 'subzero' | 'guardrails';
+type Tab = 'equipment' | 'setup' | 'germination' | 'vegetative' | 'flower' | 'logger' | 'guardrails';
 
 function getDaysSince(dateStr: string): number {
   const start = new Date(dateStr);
@@ -181,7 +181,6 @@ export default function App() {
         <button className={tab === 'vegetative' ? 'active' : ''} onClick={() => setTab('vegetative')}>Vegetative</button>
         <button className={tab === 'flower' ? 'active' : ''} onClick={() => setTab('flower')}>Flower</button>
         <button className={tab === 'logger' ? 'active' : ''} onClick={() => setTab('logger')}>Logger</button>
-        <button className={tab === 'subzero' ? 'active' : ''} onClick={() => setTab('subzero')}>Subzero</button>
         <button className={tab === 'guardrails' ? 'active' : ''} onClick={() => setTab('guardrails')}>Guardrails</button>
       </nav>
 
@@ -236,10 +235,14 @@ export default function App() {
         )}
 
         {tab === 'vegetative' && renderPhaseChecklist(1)}
-        {tab === 'flower' && renderPhaseChecklist(2)}
+        {tab === 'flower' && (
+          <>
+            {renderPhaseChecklist(2)}
+            <SubzeroProtocol active={subzeroActive} onToggle={() => setSubzeroActive(v => !v)} currentDay={currentDay} breederLifecycle={breederLifecycle} />
+          </>
+        )}
 
         {tab === 'logger' && <EnvironmentalLogger readings={readings} onAddReading={addReading} currentDay={currentDay} />}
-        {tab === 'subzero' && <SubzeroProtocol active={subzeroActive} onToggle={() => setSubzeroActive(v => !v)} currentDay={currentDay} breederLifecycle={breederLifecycle} />}
         {tab === 'guardrails' && <Guardrails />}
       </main>
 

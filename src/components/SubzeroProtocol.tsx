@@ -76,7 +76,7 @@ export function SubzeroProtocol({ active, onToggle, currentDay, breederLifecycle
       {active && (
         <div className="subzero-active">
           <div className="banner subzero-banner">
-            Subzero Protocol Active — Use Timeline Tab for Day-by-Day Guidance
+            Subzero Protocol Active
           </div>
 
           <div className="protocol-detail">
