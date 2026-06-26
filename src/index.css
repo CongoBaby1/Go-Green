@@ -251,6 +251,36 @@ h4 {
   border-color: var(--accent-dark);
 }
 
+.checklist-card.checked {
+  border-color: var(--accent-dark);
+  background: var(--accent-glow);
+  opacity: 0.7;
+}
+
+.checklist-card.checked .card-header h3 {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.checklist-card.checked p {
+  color: var(--text-muted);
+}
+
+.equipment-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.equipment-label input[type="checkbox"] {
+  margin-top: 0.25rem;
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
 .card-header {
   display: flex;
   align-items: center;

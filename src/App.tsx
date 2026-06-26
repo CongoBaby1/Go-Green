@@ -185,7 +185,7 @@ export default function App() {
       </nav>
 
       <main className="main">
-        {tab === 'equipment' && <EquipmentChecklist />}
+        {tab === 'equipment' && <EquipmentChecklist completedCheckpoints={completedCheckpoints} onToggleCheckpoint={handleToggleCheckpoint} />}
 
         {tab === 'setup' && (
           <div className="setup-panel">
