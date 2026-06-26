@@ -70,12 +70,18 @@ export default function App() {
     saveState(next);
   }, [breederLifecycle, startDate, currentDay, completedCheckpoints, timestamps, setupComplete]);
 
-  const handleSetup = () => {
+  const handleStartGrow = () => {
     const day = startDate ? getDaysSince(startDate) : 1;
     setCurrentDay(day);
     setSetupComplete(true);
     setTab('germination');
     persist({ setupComplete: true, currentDay: day });
+  };
+
+  const handleUpdateCalculations = () => {
+    const day = startDate ? getDaysSince(startDate) : 1;
+    setCurrentDay(day);
+    persist({ currentDay: day });
   };
 
   const handleToggleCheckpoint = useCallback((checkpointId: string) => {
@@ -194,7 +200,7 @@ export default function App() {
                 <div className="calc-item"><span className="calc-label">Projected Harvest</span><span className="calc-val">Day {breederLifecycle}</span></div>
               </div>
             </div>
-            <button className="btn-primary" onClick={handleSetup}>Start Grow</button>
+            <button className="btn-primary" onClick={handleStartGrow}>Start Grow</button>
           </div>
         </main>
         <footer className="footer"><p>The trichomes under the loupe always dictate the final timeline, not just the calendar day.</p></footer>
@@ -235,7 +241,7 @@ export default function App() {
                 Start Date
                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
               </label>
-              <button className="btn-primary" onClick={handleSetup}>Update Calculations</button>
+              <button className="btn-primary" onClick={handleUpdateCalculations}>Update Calculations</button>
             </div>
             <div className="setup-preview">
               <h3>Active Calculated Windows</h3>
