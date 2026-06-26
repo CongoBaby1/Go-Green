@@ -19,6 +19,9 @@
   --danger-bg: rgba(239, 68, 68, 0.1);
   --info: #06b6d4;
   --info-bg: rgba(6, 182, 212, 0.1);
+  --success: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.1);
+  --success-glow: rgba(74, 222, 128, 0.15);
   --font: 'Inter', system-ui, -apple-system, sans-serif;
   --radius: 10px;
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
@@ -1405,4 +1408,29 @@ h4 {
 
 .trigger-dot-legend {
   background: var(--info);
+}
+
+/* Veg Check milestone card */
+.trigger-chip.veg-check {
+  border-color: var(--success);
+  background: var(--success-bg);
+}
+
+.trigger-chip.veg-check .trigger-label {
+  font-weight: 600;
+  color: var(--success);
+  font-size: 0.8125rem;
+}
+
+.trigger-chip.veg-check .trigger-status {
+  color: var(--success);
+}
+
+.trigger-chip.veg-check.reached {
+  background: var(--success-glow);
+  border-color: var(--success);
+}
+
+.trigger-chip.veg-check.reached .trigger-status {
+  color: var(--success);
 }

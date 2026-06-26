@@ -240,6 +240,9 @@ export default function App() {
               onSelectDay={handleDaySelect}
               subzeroActive={subzeroActive}
               breederLifecycle={breederLifecycle}
+              completedCheckpoints={completedCheckpoints}
+              onToggleCheckpoint={handleToggleCheckpoint}
+              timestamps={timestamps}
             />
             {selectedDay !== null && (
               <DayDetail

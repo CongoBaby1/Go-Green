@@ -6,15 +6,20 @@ interface Props {
   onSelectDay: (day: number) => void;
   subzeroActive: boolean;
   breederLifecycle: number;
+  completedCheckpoints?: Record<string, boolean>;
+  onToggleCheckpoint?: (checkpointId: string) => void;
+  timestamps?: Record<string, string>;
 }
 
-export function GrowTimeline({ currentDay, selectedDay, onSelectDay, subzeroActive, breederLifecycle }: Props) {
+export function GrowTimeline({ currentDay, selectedDay, onSelectDay, subzeroActive, breederLifecycle, completedCheckpoints, onToggleCheckpoint, timestamps }: Props) {
   const timelineDays = subzeroActive ? SUBZERO_DAYS : GROW_DAYS;
 
   const subzeroStart = breederLifecycle - 14;
   const drybackStart = breederLifecycle - 7;
   const iceFlushDay = breederLifecycle - 3;
   const darknessStart = breederLifecycle - 2;
+
+  const vegCheckReached = !!completedCheckpoints?.['true-leaves'];
 
   const dynamicTriggers = [
     { day: 30, label: 'Bloom Shift' },
@@ -50,6 +55,19 @@ export function GrowTimeline({ currentDay, selectedDay, onSelectDay, subzeroActi
       </p>
 
       <div className="dynamic-triggers">
+        {/* Veg Check milestone card */}
+        <div
+          className={`trigger-chip milestone-card veg-check ${vegCheckReached ? 'reached' : ''}`}
+          onClick={() => onToggleCheckpoint?.('true-leaves')}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="trigger-label">Veg Check</span>
+          <span className="trigger-status">
+            {vegCheckReached ? 'REACHED' : 'CHECK'}
+          </span>
+          {timestamps?.['true-leaves'] && <span className="trigger-day">{timestamps['true-leaves']}</span>}
+        </div>
+
         {dynamicTriggers.map(trigger => {
           const isActive = currentDay >= trigger.day;
           const isUpcoming = currentDay < trigger.day;
