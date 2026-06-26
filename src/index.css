@@ -132,6 +132,24 @@ body {
   background: var(--bg-elevated);
 }
 
+.nav button.locked {
+  color: var(--text-muted);
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.nav button.locked .lock-icon::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: 0.3rem;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.6;
+}
+
 /* Main */
 .main {
   flex: 1;
@@ -224,6 +242,18 @@ h4 {
   background: var(--info-bg);
   border: 1px solid var(--info);
   color: var(--info);
+}
+
+.guardrail-critical {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.guardrail-warning {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  color: var(--warning);
 }
 
 /* Cards */
@@ -694,6 +724,44 @@ h4 {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.phase-targets {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.target-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.target-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.target-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.target-val {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.logger-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .log-form {

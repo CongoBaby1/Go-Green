@@ -7,12 +7,49 @@ interface Props {
   currentDay: number;
 }
 
-export function EnvironmentalLogger({ readings, onAddReading, currentDay: _currentDay }: Props) {
+function getPhaseTargets(currentDay: number) {
+  if (currentDay <= 7) {
+    return {
+      phase: 'Germination',
+      temp: { min: 75, max: 80 },
+      humidity: { min: 65, max: 75 },
+      tension: null,
+      water: { min: 50, max: 75 },
+    };
+  }
+  if (currentDay <= 26) {
+    return {
+      phase: 'Vegetative',
+      temp: { min: 72, max: 78 },
+      humidity: { min: 50, max: 60 },
+      tension: { min: 80, max: 120 },
+      water: { min: 1000, max: 2000 },
+    };
+  }
+  return {
+    phase: 'Flowering',
+    temp: { min: 68, max: 75 },
+    humidity: { min: 45, max: 55 },
+    tension: { min: 80, max: 120 },
+    water: { min: 3000, max: 4000 },
+  };
+}
+
+function checkRange(label: string, val: number, range: { min: number; max: number } | null): string | null {
+  if (!range) return null;
+  if (val < range.min) return `${label} ${val} is below target (${range.min}-${range.max})`;
+  if (val > range.max) return `${label} ${val} is above target (${range.min}-${range.max})`;
+  return null;
+}
+
+export function EnvironmentalLogger({ readings, onAddReading, currentDay }: Props) {
   const [temp, setTemp] = useState('');
   const [humidity, setHumidity] = useState('');
   const [tension, setTension] = useState('');
   const [water, setWater] = useState('');
   const [notes, setNotes] = useState('');
+
+  const targets = getPhaseTargets(currentDay);
 
   const submit = () => {
     const reading: EnvironmentalReading = {
@@ -36,10 +73,40 @@ export function EnvironmentalLogger({ readings, onAddReading, currentDay: _curre
     return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '--';
   };
 
+  const latest = readings[readings.length - 1];
+  const warnings: string[] = [];
+  if (latest) {
+    const t = checkRange('Temp (F)', latest.temperature, targets.temp);
+    if (t) warnings.push(t);
+    const h = checkRange('Humidity (%)', latest.humidity, targets.humidity);
+    if (h) warnings.push(h);
+    const st = checkRange('Soil Tension (mbar)', latest.soilTension, targets.tension);
+    if (st) warnings.push(st);
+    const w = checkRange('Water (mL)', latest.wateringMl, targets.water);
+    if (w) warnings.push(w);
+  }
+
   return (
     <div className="env-logger">
       <h2>Environmental Logger</h2>
-      <p className="subtext">Log daily readings to track your grow environment.</p>
+      <p className="subtext">Log daily readings. Targets shown are for {targets.phase} phase (Day {currentDay}).</p>
+
+      <div className="phase-targets">
+        <div className="target-grid">
+          <div className="target-item"><span className="target-label">Target Temp</span><span className="target-val">{targets.temp ? `${targets.temp.min}-${targets.temp.max} F` : 'N/A'}</span></div>
+          <div className="target-item"><span className="target-label">Target Humidity</span><span className="target-val">{targets.humidity ? `${targets.humidity.min}-${targets.humidity.max}%` : 'N/A'}</span></div>
+          <div className="target-item"><span className="target-label">Target Tension</span><span className="target-val">{targets.tension ? `${targets.tension.min}-${targets.tension.max} mbar` : 'N/A'}</span></div>
+          <div className="target-item"><span className="target-label">Target Water</span><span className="target-val">{targets.water ? `${targets.water.min}-${targets.water.max} mL` : 'N/A'}</span></div>
+        </div>
+      </div>
+
+      {warnings.length > 0 && (
+        <div className="logger-warnings">
+          {warnings.map((w, i) => (
+            <div key={i} className="banner guardrail-warning">{w}</div>
+          ))}
+        </div>
+      )}
 
       <div className="log-form">
         <div className="form-row">

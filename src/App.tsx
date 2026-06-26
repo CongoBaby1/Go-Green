@@ -142,12 +142,47 @@ export default function App() {
     persist({ setupComplete: true, currentDay: day });
   };
 
-  const handleUpdateCalculations = () => {
-    const day = startDate ? getDaysSince(startDate) : 1;
-    setCurrentDay(day);
-    persist({ currentDay: day });
+  // Auto-calculate current day on load and when startDate changes
+  useEffect(() => {
+    if (startDate && setupComplete) {
+      const day = getDaysSince(startDate);
+      if (day !== currentDay) {
+        setCurrentDay(day);
+      }
+    }
+  }, [startDate, setupComplete, currentDay]);
+
+  // Tab lockout logic
+  const isTabUnlocked = (tabName: Tab): boolean => {
+    if (tabName === 'equipment' || tabName === 'setup' || tabName === 'logger' || tabName === 'guardrails') {
+      return true;
+    }
+    if (tabName === 'germination') {
+      return setupComplete;
+    }
+    if (tabName === 'vegetative') {
+      return setupComplete && (currentDay >= 8 || !!completedCheckpoints['true-leaves']);
+    }
+    if (tabName === 'flower') {
+      return setupComplete && currentDay >= 27;
+    }
+    return false;
   };
 
+  const getTabTooltip = (tabName: Tab): string => {
+    if (tabName === 'germination' && !setupComplete) {
+      return 'Click Start Grow in Setup to begin tracking';
+    }
+    if (tabName === 'vegetative' && !isTabUnlocked('vegetative')) {
+      return currentDay < 8
+        ? `Unlocked on Day 8. Current: Day ${currentDay}`
+        : 'Complete the True Leaves checkpoint in Germination to unlock';
+    }
+    if (tabName === 'flower' && !isTabUnlocked('flower')) {
+      return `Unlocked on Day 27. Current: Day ${currentDay}`;
+    }
+    return '';
+  };
   const handleToggleCheckpoint = useCallback((checkpointId: string) => {
     setCompletedCheckpoints(prev => {
       const nextCp = { ...prev, [checkpointId]: !prev[checkpointId] };
@@ -280,13 +315,21 @@ export default function App() {
       </header>
 
       <nav className="nav">
-        <button className={tab === 'equipment' ? 'active' : ''} onClick={() => setTab('equipment')}>Equipment</button>
-        <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>Setup</button>
-        <button className={tab === 'germination' ? 'active' : ''} onClick={() => setTab('germination')}>Germination</button>
-        <button className={tab === 'vegetative' ? 'active' : ''} onClick={() => setTab('vegetative')}>Vegetative</button>
-        <button className={tab === 'flower' ? 'active' : ''} onClick={() => setTab('flower')}>Flower</button>
-        <button className={tab === 'logger' ? 'active' : ''} onClick={() => setTab('logger')}>Logger</button>
-        <button className={tab === 'guardrails' ? 'active' : ''} onClick={() => setTab('guardrails')}>Guardrails</button>
+        {(['equipment', 'setup', 'germination', 'vegetative', 'flower', 'logger', 'guardrails'] as Tab[]).map((tabName) => {
+          const unlocked = isTabUnlocked(tabName);
+          return (
+            <button
+              key={tabName}
+              className={`${tab === tabName ? 'active' : ''} ${!unlocked ? 'locked' : ''}`}
+              onClick={() => unlocked && setTab(tabName)}
+              disabled={!unlocked}
+              title={getTabTooltip(tabName)}
+            >
+              {tabName.charAt(0).toUpperCase() + tabName.slice(1)}
+              {!unlocked && <span className="lock-icon"></span>}
+            </button>
+          );
+        })}
       </nav>
 
       <main className="main">
@@ -324,7 +367,7 @@ export default function App() {
             {!setupComplete ? (
               <button className="btn-primary" onClick={handleStartGrow}>Start Grow</button>
             ) : (
-              <button className="btn-primary" onClick={handleUpdateCalculations}>Update Calculations</button>
+              <p className="subtext">Day updates automatically. Edit fields above to adjust.</p>
             )}
           </div>
         )}
@@ -339,11 +382,36 @@ export default function App() {
           />
         )}
 
-        {tab === 'vegetative' && renderPhaseChecklist(1)}
+        {tab === 'vegetative' && (
+          <>
+            {currentDay > 16 && !completedCheckpoints['pathway-1'] && !completedCheckpoints['pathway-2'] && (
+              <div className="banner guardrail-critical">
+                <strong>CRITICAL — Past Safe Topping Window.</strong> Autoflower countdown clock ticking. Execute <strong>Pathway 2 (Soft LST Bending)</strong> immediately to prevent vertical Christmas-tree stretching.
+              </div>
+            )}
+            {renderPhaseChecklist(1)}
+          </>
+        )}
         {tab === 'flower' && (
           <>
+            {currentDay >= 30 && (
+              <div className="banner guardrail-warning">
+                <strong>Pruning Locked.</strong> Flowering active past Day 30. Any pruning or lollipopping now will stunt yields. Focus strictly on watering and light.
+              </div>
+            )}
             {renderPhaseChecklist(2)}
-            <SubzeroProtocol active={subzeroActive} onToggle={() => { setSubzeroActive(v => !v); persist({ subzeroActive: !subzeroActive }); }} currentDay={currentDay} breederLifecycle={breederLifecycle} />
+            {currentDay >= breederLifecycle - 14 ? (
+              <SubzeroProtocol
+                active={subzeroActive}
+                onToggle={() => { setSubzeroActive(v => !v); persist({ subzeroActive: !subzeroActive }); }}
+                currentDay={currentDay}
+                breederLifecycle={breederLifecycle}
+              />
+            ) : (
+              <div className="banner subzero-banner">
+                Subzero Protocol unlocks on Day {breederLifecycle - 14}. Current: Day {currentDay}.
+              </div>
+            )}
           </>
         )}
 
