@@ -1,15 +1,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { EquipmentChecklist } from './components/EquipmentChecklist';
 import { GerminationSelector } from './components/GerminationSelector';
-import { GrowTimeline } from './components/GrowTimeline';
-import { DayDetail } from './components/DayDetail';
 import { EnvironmentalLogger } from './components/EnvironmentalLogger';
 import { SubzeroProtocol } from './components/SubzeroProtocol';
 import { Guardrails } from './components/Guardrails';
 import { AUTO_TRACKER_PHASES } from './data/autoTracker';
 import type { EnvironmentalReading } from './data/types';
 
-type Tab = 'timeline' | 'setup' | 'equipment' | 'germination' | 'vegetative' | 'flower' | 'logger' | 'subzero' | 'guardrails';
+type Tab = 'setup' | 'equipment' | 'germination' | 'vegetative' | 'flower' | 'logger' | 'subzero' | 'guardrails';
 
 function getDaysSince(dateStr: string): number {
   const start = new Date(dateStr);
@@ -44,11 +42,10 @@ function saveState(state: PersistedState) {
 
 export default function App() {
   const saved = loadState();
-  const [tab, setTab] = useState<Tab>(saved?.setupComplete ? 'timeline' : 'setup');
+  const [tab, setTab] = useState<Tab>(saved?.setupComplete ? 'germination' : 'setup');
   const [breederLifecycle, setBreederLifecycle] = useState(saved?.breederLifecycle || 80);
   const [startDate, setStartDate] = useState(saved?.startDate || '');
   const [currentDay, setCurrentDay] = useState(saved?.currentDay || 1);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [germPath, setGermPath] = useState<'direct' | 'transplant' | null>(null);
   const [subzeroActive, setSubzeroActive] = useState(false);
   const [readings, setReadings] = useState<EnvironmentalReading[]>([]);
@@ -77,7 +74,7 @@ export default function App() {
     const day = startDate ? getDaysSince(startDate) : 1;
     setCurrentDay(day);
     setSetupComplete(true);
-    setTab('timeline');
+    setTab('germination');
     persist({ setupComplete: true, currentDay: day });
   };
 
@@ -103,15 +100,10 @@ export default function App() {
     }
   }, [completedCheckpoints, timestamps, setupComplete, persist]);
 
-  const handleDaySelect = useCallback((day: number) => {
-    setSelectedDay(day);
-  }, []);
-
   const addReading = useCallback((reading: EnvironmentalReading) => {
     setReadings(prev => [...prev, reading]);
   }, []);
 
-  // Determine which phase a day belongs to
   // Dynamic calculations
   const subzeroStart = breederLifecycle - 14;
   const drybackStart = breederLifecycle - 7;
@@ -220,7 +212,6 @@ export default function App() {
       </header>
 
       <nav className="nav">
-        <button className={tab === 'timeline' ? 'active' : ''} onClick={() => setTab('timeline')}>Timeline</button>
         <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>Setup</button>
         <button className={tab === 'equipment' ? 'active' : ''} onClick={() => setTab('equipment')}>Equipment</button>
         <button className={tab === 'germination' ? 'active' : ''} onClick={() => setTab('germination')}>Germination</button>
@@ -232,30 +223,6 @@ export default function App() {
       </nav>
 
       <main className="main">
-        {tab === 'timeline' && (
-          <>
-            <GrowTimeline
-              currentDay={currentDay}
-              selectedDay={selectedDay}
-              onSelectDay={handleDaySelect}
-              subzeroActive={subzeroActive}
-              breederLifecycle={breederLifecycle}
-              completedCheckpoints={completedCheckpoints}
-              onToggleCheckpoint={handleToggleCheckpoint}
-              timestamps={timestamps}
-            />
-            {selectedDay !== null && (
-              <DayDetail
-                day={selectedDay}
-                currentDay={currentDay}
-                onSetCurrentDay={setCurrentDay}
-                subzeroActive={subzeroActive}
-                breederLifecycle={breederLifecycle}
-              />
-            )}
-          </>
-        )}
-
         {tab === 'setup' && (
           <div className="setup-panel">
             <h2>Grow Configuration</h2>
