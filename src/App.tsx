@@ -7,7 +7,7 @@ import { Guardrails } from './components/Guardrails';
 import { AUTO_TRACKER_PHASES } from './data/autoTracker';
 import type { EnvironmentalReading } from './data/types';
 
-type Tab = 'setup' | 'equipment' | 'germination' | 'vegetative' | 'flower' | 'logger' | 'subzero' | 'guardrails';
+type Tab = 'equipment' | 'setup' | 'germination' | 'vegetative' | 'flower' | 'logger' | 'subzero' | 'guardrails';
 
 function getDaysSince(dateStr: string): number {
   const start = new Date(dateStr);
@@ -42,7 +42,7 @@ function saveState(state: PersistedState) {
 
 export default function App() {
   const saved = loadState();
-  const [tab, setTab] = useState<Tab>(saved?.setupComplete ? 'germination' : 'setup');
+  const [tab, setTab] = useState<Tab>('equipment');
   const [breederLifecycle, setBreederLifecycle] = useState(saved?.breederLifecycle || 80);
   const [startDate, setStartDate] = useState(saved?.startDate || '');
   const [currentDay, setCurrentDay] = useState(saved?.currentDay || 1);
@@ -165,18 +165,32 @@ export default function App() {
     );
   };
 
-  if (!setupComplete) {
-    return (
-      <div className="app">
-        <header className="header">
-          <div className="header-content">
-            <h1 className="logo">Go Green</h1>
-            <p className="tagline">Elite Autoflower Grow Guide</p>
-          </div>
-        </header>
-        <main className="main">
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="header-content">
+          <h1 className="logo">Go Green</h1>
+          <p className="tagline">Elite Autoflower Grow Guide</p>
+        </div>
+      </header>
+
+      <nav className="nav">
+        <button className={tab === 'equipment' ? 'active' : ''} onClick={() => setTab('equipment')}>Equipment</button>
+        <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>Setup</button>
+        <button className={tab === 'germination' ? 'active' : ''} onClick={() => setTab('germination')}>Germination</button>
+        <button className={tab === 'vegetative' ? 'active' : ''} onClick={() => setTab('vegetative')}>Vegetative</button>
+        <button className={tab === 'flower' ? 'active' : ''} onClick={() => setTab('flower')}>Flower</button>
+        <button className={tab === 'logger' ? 'active' : ''} onClick={() => setTab('logger')}>Logger</button>
+        <button className={tab === 'subzero' ? 'active' : ''} onClick={() => setTab('subzero')}>Subzero</button>
+        <button className={tab === 'guardrails' ? 'active' : ''} onClick={() => setTab('guardrails')}>Guardrails</button>
+      </nav>
+
+      <main className="main">
+        {tab === 'equipment' && <EquipmentChecklist />}
+
+        {tab === 'setup' && (
           <div className="setup-panel">
-            <h2>Grow Setup</h2>
+            <h2>Grow Configuration</h2>
             <p className="subtext">Configure your breeder lifecycle and start date. The app calculates all dynamic windows automatically.</p>
             <div className="setup-form">
               <label>
@@ -190,61 +204,9 @@ export default function App() {
                 <span className="hint">The day you planted the seed. Leave blank to start from Day 1.</span>
               </label>
             </div>
+
             <div className="setup-preview">
               <h3>Calculated Windows</h3>
-              <div className="calc-grid">
-                <div className="calc-item"><span className="calc-label">Subzero Protocol Starts</span><span className="calc-val">Day {subzeroStart}</span></div>
-                <div className="calc-item"><span className="calc-label">Dryback Sequence Starts</span><span className="calc-val">Day {drybackStart}</span></div>
-                <div className="calc-item"><span className="calc-label">Ice Water Flush</span><span className="calc-val">Day {iceFlushDay}</span></div>
-                <div className="calc-item"><span className="calc-label">Darkness Dump Starts</span><span className="calc-val">Day {darknessStart}</span></div>
-                <div className="calc-item"><span className="calc-label">Projected Harvest</span><span className="calc-val">Day {breederLifecycle}</span></div>
-              </div>
-            </div>
-            <button className="btn-primary" onClick={handleStartGrow}>Start Grow</button>
-          </div>
-        </main>
-        <footer className="footer"><p>The trichomes under the loupe always dictate the final timeline, not just the calendar day.</p></footer>
-      </div>
-    );
-  }
-
-  return (
-    <div className="app">
-      <header className="header">
-        <div className="header-content">
-          <h1 className="logo">Go Green</h1>
-          <p className="tagline">Elite Autoflower Grow Guide</p>
-        </div>
-      </header>
-
-      <nav className="nav">
-        <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>Setup</button>
-        <button className={tab === 'equipment' ? 'active' : ''} onClick={() => setTab('equipment')}>Equipment</button>
-        <button className={tab === 'germination' ? 'active' : ''} onClick={() => setTab('germination')}>Germination</button>
-        <button className={tab === 'vegetative' ? 'active' : ''} onClick={() => setTab('vegetative')}>Vegetative</button>
-        <button className={tab === 'flower' ? 'active' : ''} onClick={() => setTab('flower')}>Flower</button>
-        <button className={tab === 'logger' ? 'active' : ''} onClick={() => setTab('logger')}>Logger</button>
-        <button className={tab === 'subzero' ? 'active' : ''} onClick={() => setTab('subzero')}>Subzero</button>
-        <button className={tab === 'guardrails' ? 'active' : ''} onClick={() => setTab('guardrails')}>Guardrails</button>
-      </nav>
-
-      <main className="main">
-        {tab === 'setup' && (
-          <div className="setup-panel">
-            <h2>Grow Configuration</h2>
-            <div className="setup-form">
-              <label>
-                Breeder Lifecycle (days)
-                <input type="number" value={breederLifecycle} onChange={e => setBreederLifecycle(parseInt(e.target.value) || 80)} min={60} max={120} />
-              </label>
-              <label>
-                Start Date
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-              </label>
-              <button className="btn-primary" onClick={handleUpdateCalculations}>Update Calculations</button>
-            </div>
-            <div className="setup-preview">
-              <h3>Active Calculated Windows</h3>
               <div className="calc-grid">
                 <div className="calc-item"><span className="calc-label">Current Day</span><span className="calc-val">Day {currentDay}</span></div>
                 <div className="calc-item"><span className="calc-label">Subzero Protocol Starts</span><span className="calc-val">Day {subzeroStart}</span></div>
@@ -254,10 +216,14 @@ export default function App() {
                 <div className="calc-item"><span className="calc-label">Projected Harvest</span><span className="calc-val">Day {breederLifecycle}</span></div>
               </div>
             </div>
+
+            {!setupComplete ? (
+              <button className="btn-primary" onClick={handleStartGrow}>Start Grow</button>
+            ) : (
+              <button className="btn-primary" onClick={handleUpdateCalculations}>Update Calculations</button>
+            )}
           </div>
         )}
-
-        {tab === 'equipment' && <EquipmentChecklist />}
 
         {tab === 'germination' && (
           <GerminationSelector
