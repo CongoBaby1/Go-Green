@@ -32,6 +32,37 @@ export function PhotoEquipmentChecklist({ completedCheckpoints, onToggleCheckpoi
           );
         })}
       </div>
+
+      <div className="recipe-card">
+        <h2>Microbe Tea Recipe</h2>
+        <p className="subtext">Ingredients for the 1-Gallon Microbial Tea. Mix fresh every batch.</p>
+        <div className="recipe-grid">
+          <div className="recipe-item">
+            <span className="recipe-label">Base</span>
+            <span className="recipe-val">1 Gallon non-chlorinated water or clean rainwater</span>
+          </div>
+          <div className="recipe-item">
+            <span className="recipe-label">Inoculant</span>
+            <span className="recipe-val">1 teaspoon Real Growers Recharge</span>
+          </div>
+          <div className="recipe-item">
+            <span className="recipe-label">Organic Matter</span>
+            <span className="recipe-val">29.5 mL Wiggle Worm Organic Worm Casting Tea</span>
+          </div>
+          <div className="recipe-item">
+            <span className="recipe-label">Fuel / Catalyst</span>
+            <span className="recipe-val">10 mL Microbe Life Hydroponics Vitamins and Amino Acids</span>
+          </div>
+          <div className="recipe-item">
+            <span className="recipe-label">Coco Coir pH</span>
+            <span className="recipe-val">5.8 - 5.9</span>
+          </div>
+          <div className="recipe-item">
+            <span className="recipe-label">Living Soil pH</span>
+            <span className="recipe-val">6.0 - 6.5 (adjust after mixing all ingredients)</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

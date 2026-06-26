@@ -111,10 +111,11 @@ export async function loadPhotoGrowState(uid: string): Promise<PhotoPersistedSta
   const snap = await getDoc(ref);
   if (snap.exists()) {
     const data = snap.data() as any;
-    const state: PhotoPersistedState = {
+      const state: PhotoPersistedState = {
       completedCheckpoints: data.completedCheckpoints ?? {},
       timestamps: data.timestamps ?? {},
       flipped: data.flipped ?? false,
+      feedings: data.feedings ?? [],
     };
     return state;
   }

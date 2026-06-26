@@ -41,10 +41,18 @@ export interface PhotoEnvironmentalReading {
   notes: string;
 }
 
+export interface PhotoFeedingEvent {
+  date: string;
+  phase: string;
+  action: string;
+  notes: string;
+}
+
 export interface PhotoPersistedState {
   completedCheckpoints: Record<string, boolean>;
   timestamps: Record<string, string>;
   flipped: boolean;
+  feedings: PhotoFeedingEvent[];
 }
 
 export interface UserProfile {

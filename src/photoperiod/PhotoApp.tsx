@@ -6,7 +6,8 @@ import { PhotoPhaseDetail } from './components/PhotoPhaseDetail';
 import { PhotoEnvironmentalLogger } from './components/PhotoEnvironmentalLogger';
 import { PhotoGuardrails } from './components/PhotoGuardrails';
 import { PhotoTracker } from './components/PhotoTracker';
-import type { PhotoEnvironmentalReading, PhotoPersistedState, UserProfile } from './data/types';
+import { PHOTO_TRACKER_PHASES } from '../data/photoTracker';
+import type { PhotoEnvironmentalReading, PhotoFeedingEvent, PhotoPersistedState, UserProfile } from './data/types';
 import { auth } from '../firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { loadPhotoGrowState, savePhotoGrowState, loadUserProfile } from '../services/firestoreService';
@@ -41,6 +42,7 @@ export default function PhotoApp() {
   const [germPath, setGermPath] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(saved?.flipped || false);
   const [readings, setReadings] = useState<PhotoEnvironmentalReading[]>([]);
+  const [feedings, setFeedings] = useState<PhotoFeedingEvent[]>(saved?.feedings || []);
   const [completedCheckpoints, setCompletedCheckpoints] = useState<Record<string, boolean>>(
     saved?.completedCheckpoints || {}
   );
@@ -73,6 +75,7 @@ export default function PhotoApp() {
             setCompletedCheckpoints(cloudState.completedCheckpoints);
             setTimestamps(cloudState.timestamps);
             setFlipped(cloudState.flipped);
+            setFeedings(cloudState.feedings || []);
           } else {
             // First login — migrate any localStorage data to Firestore
             const local = loadLocalState();
@@ -98,7 +101,8 @@ export default function PhotoApp() {
     completedCheckpoints,
     timestamps,
     flipped,
-  }), [completedCheckpoints, timestamps, flipped]);
+    feedings,
+  }), [completedCheckpoints, timestamps, flipped, feedings]);
 
   const persist = useCallback(async (updates?: Partial<PhotoPersistedState>) => {
     const base = getFullState();
@@ -141,6 +145,37 @@ export default function PhotoApp() {
     setTimestamps(prev => ({ ...prev, 'light-12-12': new Date().toISOString().split('T')[0] }));
   }, []);
 
+  const getPhotoTeaBanner = (): { text: string; action: string; type: 'info' | 'warning' | 'critical' } | null => {
+    // Determine current phase based on completed checkpoints
+    let phaseIndex = 0;
+    for (let i = 0; i < PHOTO_TRACKER_PHASES.length; i++) {
+      const phase = PHOTO_TRACKER_PHASES[i];
+      const allChecked = phase.checkpoints.every(c => completedCheckpoints[c.id]);
+      if (allChecked) phaseIndex = i + 1;
+    }
+    if (phaseIndex >= PHOTO_TRACKER_PHASES.length) phaseIndex = PHOTO_TRACKER_PHASES.length - 1;
+
+    const phaseId = PHOTO_TRACKER_PHASES[phaseIndex]?.phaseId;
+
+    if (phaseId === 'germination') {
+      return { text: 'Skip the tea. Use plain water only. The young plant needs time to establish its first roots without being pushed by heavy biology.', action: 'Plain Water', type: 'info' };
+    }
+    if (phaseId === 'veg') {
+      return { text: 'Apply Once a Week. Top-water with the tea mix every 7 days throughout the rest of your veg cycle. This builds a massive root network and fuels structural growth.', action: 'Tea Applied', type: 'info' };
+    }
+    if (phaseId === 'flip') {
+      const day21Stop = completedCheckpoints['day-21-stop'];
+      if (!day21Stop) {
+        return { text: 'Bloom Activation Blast. Scratch dry amendments/top dressings into the top inch of the medium. Immediately water in heavily with a fresh batch of this tea to activate the biology.', action: 'Bloom Booster', type: 'critical' };
+      }
+      return { text: 'Peak Flower Swell. Continue top-watering with the tea mix every 7 days to maximize bud density, stack weight, and drive heavy resin production.', action: 'Tea Applied', type: 'info' };
+    }
+    if (phaseId === 'harvest') {
+      return { text: 'STOP THE TEA. Switch entirely to plain, clean water for the final stretch as the plant finishes ripening.', action: 'Plain Water', type: 'warning' };
+    }
+    return null;
+  };
+
   const handlePhaseSelect = useCallback((index: number) => {
     setSelectedPhaseIndex(index);
     setTab('timeline');
@@ -149,6 +184,19 @@ export default function PhotoApp() {
   const addReading = useCallback((reading: PhotoEnvironmentalReading) => {
     setReadings(prev => [...prev, reading]);
   }, []);
+
+  const addFeeding = useCallback((feeding: PhotoFeedingEvent) => {
+    setFeedings(prev => {
+      const next = [...prev, feeding];
+      const base = getFullState();
+      const state = { ...base, feedings: next };
+      saveLocalState(state);
+      if (user) {
+        savePhotoGrowState(user.uid, state).catch(e => console.error('[Firestore] Failed to save:', e));
+      }
+      return next;
+    });
+  }, [getFullState, user]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -161,6 +209,7 @@ export default function PhotoApp() {
     setReadings([]);
     setCompletedCheckpoints({});
     setTimestamps({});
+    setFeedings([]);
   };
 
   // Show auth screen until Firebase auth initializes
@@ -205,21 +254,47 @@ export default function PhotoApp() {
 
       <main className="main">
         {tab === 'tracker' && (
-          <PhotoTracker
-            completedCheckpoints={completedCheckpoints}
-            timestamps={timestamps}
-            onToggleCheckpoint={handleToggleCheckpoint}
-            onFlip={handleFlip}
-          />
+          <>
+            {(() => {
+              const tea = getPhotoTeaBanner();
+              if (!tea) return null;
+              return (
+                <div className={`banner tea-banner tea-${tea.type}`}>
+                  <div className="tea-text">{tea.text}</div>
+                  <div className="tea-warn">Saturate top 2-3 inches only. Do not flush into bottom reservoir.</div>
+                  <button className="btn-text" onClick={() => addFeeding({ date: new Date().toISOString().split('T')[0], phase: PHOTO_TRACKER_PHASES.find(p => p.checkpoints.some(c => !completedCheckpoints[c.id]))?.phaseName || 'Unknown', action: tea.action, notes: '' })}>Log {tea.action}</button>
+                </div>
+              );
+            })()}
+            <PhotoTracker
+              completedCheckpoints={completedCheckpoints}
+              timestamps={timestamps}
+              onToggleCheckpoint={handleToggleCheckpoint}
+              onFlip={handleFlip}
+            />
+          </>
         )}
 
         {tab === 'equipment' && <PhotoEquipmentChecklist completedCheckpoints={completedCheckpoints} onToggleCheckpoint={handleToggleCheckpoint} />}
 
         {tab === 'germination' && (
-          <PhotoGerminationSelector
-            selectedPath={germPath}
-            onSelectPath={setGermPath}
-          />
+          <>
+            {(() => {
+              const tea = getPhotoTeaBanner();
+              if (!tea) return null;
+              return (
+                <div className={`banner tea-banner tea-${tea.type}`}>
+                  <div className="tea-text">{tea.text}</div>
+                  <div className="tea-warn">Saturate top 2-3 inches only. Do not flush into bottom reservoir.</div>
+                  <button className="btn-text" onClick={() => addFeeding({ date: new Date().toISOString().split('T')[0], phase: 'Germination', action: tea.action, notes: '' })}>Log {tea.action}</button>
+                </div>
+              );
+            })()}
+            <PhotoGerminationSelector
+              selectedPath={germPath}
+              onSelectPath={setGermPath}
+            />
+          </>
         )}
 
         {tab === 'timeline' && (
@@ -245,6 +320,8 @@ export default function PhotoApp() {
           <PhotoEnvironmentalLogger
             readings={readings}
             onAddReading={addReading}
+            feedings={feedings}
+            onAddFeeding={addFeeding}
           />
         )}
 

@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import type { PhotoEnvironmentalReading } from '../data/types';
+import type { PhotoEnvironmentalReading, PhotoFeedingEvent } from '../data/types';
 
 interface Props {
   readings: PhotoEnvironmentalReading[];
   onAddReading: (reading: PhotoEnvironmentalReading) => void;
+  feedings: PhotoFeedingEvent[];
+  onAddFeeding: (feeding: PhotoFeedingEvent) => void;
 }
 
-export function PhotoEnvironmentalLogger({ readings, onAddReading }: Props) {
+export function PhotoEnvironmentalLogger({ readings, onAddReading, feedings, onAddFeeding }: Props) {
   const [temp, setTemp] = useState('');
   const [humidity, setHumidity] = useState('');
   const [ppm, setPpm] = useState('');
@@ -14,7 +16,10 @@ export function PhotoEnvironmentalLogger({ readings, onAddReading }: Props) {
   const [water, setWater] = useState('');
   const [notes, setNotes] = useState('');
 
-  const submit = () => {
+  const [feedAction, setFeedAction] = useState('');
+  const [feedNotes, setFeedNotes] = useState('');
+
+  const submitReading = () => {
     const reading: PhotoEnvironmentalReading = {
       date: new Date().toISOString().split('T')[0],
       temperature: parseFloat(temp) || 0,
@@ -33,10 +38,25 @@ export function PhotoEnvironmentalLogger({ readings, onAddReading }: Props) {
     setNotes('');
   };
 
+  const submitFeeding = () => {
+    if (!feedAction.trim()) return;
+    const feeding: PhotoFeedingEvent = {
+      date: new Date().toISOString().split('T')[0],
+      phase: 'Logged',
+      action: feedAction.trim(),
+      notes: feedNotes.trim(),
+    };
+    onAddFeeding(feeding);
+    setFeedAction('');
+    setFeedNotes('');
+  };
+
   const avg = (key: keyof PhotoEnvironmentalReading) => {
     const vals = readings.map(r => r[key]).filter((v): v is number => typeof v === 'number');
     return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '--';
   };
+
+  const lastFeeding = feedings[feedings.length - 1];
 
   return (
     <div className="env-logger">
@@ -70,7 +90,7 @@ export function PhotoEnvironmentalLogger({ readings, onAddReading }: Props) {
           Notes
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
         </label>
-        <button className="btn-primary" onClick={submit}>Log Reading</button>
+        <button className="btn-primary" onClick={submitReading}>Log Reading</button>
       </div>
 
       {readings.length > 0 && (
@@ -119,6 +139,64 @@ export function PhotoEnvironmentalLogger({ readings, onAddReading }: Props) {
           </div>
         </div>
       )}
+
+      <div className="feeding-log">
+        <h2>Feeding Log</h2>
+        <p className="subtext">Record each tea application, bloom booster, or plain water event.</p>
+
+        {lastFeeding && (
+          <div className="last-feeding">
+            <span className="last-label">Last Feeding:</span>
+            <span className="last-val">{lastFeeding.action} on {lastFeeding.date}</span>
+          </div>
+        )}
+
+        <div className="feed-form">
+          <label>
+            Action
+            <select value={feedAction} onChange={e => setFeedAction(e.target.value)}>
+              <option value="">Select...</option>
+              <option value="Tea Applied">Tea Applied</option>
+              <option value="Bloom Booster">Bloom Booster</option>
+              <option value="Plain Water">Plain Water</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label className="notes-label">
+            Notes
+            <textarea value={feedNotes} onChange={e => setFeedNotes(e.target.value)} rows={2} placeholder="Optional details..." />
+          </label>
+          <button className="btn-primary" onClick={submitFeeding}>Log Feeding</button>
+        </div>
+
+        {feedings.length > 0 && (
+          <div className="feed-history">
+            <h3>Feeding History</h3>
+            <div className="history-table-wrap">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Phase</th>
+                    <th>Action</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...feedings].reverse().map((f, i) => (
+                    <tr key={i}>
+                      <td>{f.date}</td>
+                      <td>{f.phase}</td>
+                      <td>{f.action}</td>
+                      <td>{f.notes || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
