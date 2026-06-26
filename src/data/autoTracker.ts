@@ -12,6 +12,7 @@ export const AUTO_TRACKER_PHASES: TrackerPhase[] = [
       { id: 'option-a', label: 'Selected Option A: Direct Potting (seed directly in final pot)', checked: false },
       { id: 'option-b', label: 'Selected Option B: Cyclops Method (seed in solo cup / starter pot)', checked: false },
       { id: 'sprout-day-1', label: 'Seedling broke the surface (Sprout Day 1)', checked: false },
+      { id: 'true-leaves', label: 'Second set of true leaves visible (not counting the small round cotyledons). Plant is officially in veg state.', checked: false },
     ],
     dynamicOutput: [
       'If Option B checked and Sprout Day 5-7: ACTION REQUIRED — Root tips visible at bottom of Solo cup. Execute Zero-Shock Swap now. Remove placeholder cup, drop root ball in, bury up to cotyledons.',
