@@ -40,3 +40,15 @@ export interface PhotoEnvironmentalReading {
   wateringMl: number;
   notes: string;
 }
+
+export interface PhotoPersistedState {
+  completedCheckpoints: Record<string, boolean>;
+  timestamps: Record<string, string>;
+  flipped: boolean;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  name?: string;
+}

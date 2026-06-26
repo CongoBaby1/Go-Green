@@ -5,7 +5,11 @@ import { EnvironmentalLogger } from './components/EnvironmentalLogger';
 import { SubzeroProtocol } from './components/SubzeroProtocol';
 import { Guardrails } from './components/Guardrails';
 import { AUTO_TRACKER_PHASES } from './data/autoTracker';
-import type { EnvironmentalReading } from './data/types';
+import type { EnvironmentalReading, PersistedState, UserProfile } from './data/types';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { loadGrowState, saveGrowState, loadUserProfile } from './services/firestoreService';
+import AuthScreen from './components/AuthScreen';
 
 type Tab = 'equipment' | 'setup' | 'germination' | 'vegetative' | 'flower' | 'logger' | 'guardrails';
 
@@ -18,16 +22,7 @@ function getDaysSince(dateStr: string): number {
 
 const STORAGE_KEY = 'go-green-auto-state';
 
-interface PersistedState {
-  breederLifecycle: number;
-  startDate: string;
-  currentDay: number;
-  completedCheckpoints: Record<string, boolean>;
-  timestamps: Record<string, string>;
-  setupComplete: boolean;
-}
-
-function loadState(): PersistedState | null {
+function loadLocalState(): PersistedState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -36,19 +31,22 @@ function loadState(): PersistedState | null {
   }
 }
 
-function saveState(state: PersistedState) {
+function saveLocalState(state: PersistedState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 export default function App() {
-  const saved = loadState();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  const saved = loadLocalState();
   const [tab, setTab] = useState<Tab>('equipment');
   const [breederLifecycle, setBreederLifecycle] = useState(saved?.breederLifecycle || 80);
   const [startDate, setStartDate] = useState(saved?.startDate || '');
   const [currentDay, setCurrentDay] = useState(saved?.currentDay || 1);
-  const [germPath, setGermPath] = useState<'direct' | 'transplant' | null>(null);
-  const [subzeroActive, setSubzeroActive] = useState(false);
-  const [readings, setReadings] = useState<EnvironmentalReading[]>([]);
+  const [germPath, setGermPath] = useState<'direct' | 'transplant' | null>(saved?.germPath || null);
+  const [subzeroActive, setSubzeroActive] = useState(saved?.subzeroActive || false);
+  const [readings, setReadings] = useState<EnvironmentalReading[]>(saved?.readings || []);
   const [setupComplete, setSetupComplete] = useState(saved?.setupComplete || false);
   const [completedCheckpoints, setCompletedCheckpoints] = useState<Record<string, boolean>>(
     saved?.completedCheckpoints || {}
@@ -56,19 +54,85 @@ export default function App() {
   const [timestamps, setTimestamps] = useState<Record<string, string>>(
     saved?.timestamps || {}
   );
+  const [firestoreLoading, setFirestoreLoading] = useState(false);
 
-  const persist = useCallback((updates: Partial<PersistedState>) => {
-    const base: PersistedState = {
-      breederLifecycle,
-      startDate,
-      currentDay,
-      completedCheckpoints,
-      timestamps,
-      setupComplete,
-    };
+  // Auth listener — loads state from Firestore when user signs in
+  useEffect(() => {
+    console.log('[Auth] Setting up auth listener');
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      console.log('[Auth] Auth state changed:', fbUser ? `uid=${fbUser.uid}` : 'null');
+      if (fbUser) {
+        let profile: UserProfile = {
+          uid: fbUser.uid,
+          email: fbUser.email || '',
+        };
+        setUser(profile);
+        setFirestoreLoading(true);
+        try {
+          // Load name from profile document
+          const existingProfile = await loadUserProfile(fbUser.uid);
+          if (existingProfile?.name) {
+            profile = { ...profile, name: existingProfile.name };
+            setUser(profile);
+          }
+
+          const cloudState = await loadGrowState(fbUser.uid);
+          if (cloudState) {
+            setBreederLifecycle(cloudState.breederLifecycle);
+            setStartDate(cloudState.startDate);
+            setCurrentDay(cloudState.currentDay);
+            setCompletedCheckpoints(cloudState.completedCheckpoints);
+            setTimestamps(cloudState.timestamps);
+            setSetupComplete(cloudState.setupComplete);
+            setGermPath(cloudState.germPath);
+            setSubzeroActive(cloudState.subzeroActive);
+            setReadings(cloudState.readings);
+          } else {
+            // First login — migrate any localStorage data to Firestore
+            const local = loadLocalState();
+            if (local) {
+              await saveGrowState(fbUser.uid, local);
+            }
+          }
+        } catch (e) {
+          console.error('[Firestore] Failed to load state:', e);
+        } finally {
+          setFirestoreLoading(false);
+        }
+      } else {
+        setUser(null);
+      }
+      console.log('[Auth] Setting authReady=true');
+      setAuthReady(true);
+    });
+    return () => unsub();
+  }, []);
+
+  const getFullState = useCallback((): PersistedState => ({
+    breederLifecycle,
+    startDate,
+    currentDay,
+    completedCheckpoints,
+    timestamps,
+    setupComplete,
+    germPath,
+    subzeroActive,
+    readings,
+  }), [breederLifecycle, startDate, currentDay, completedCheckpoints, timestamps, setupComplete, germPath, subzeroActive, readings]);
+
+  // Persist to Firestore + localStorage fallback
+  const persist = useCallback(async (updates: Partial<PersistedState>) => {
+    const base = getFullState();
     const next = { ...base, ...updates };
-    saveState(next);
-  }, [breederLifecycle, startDate, currentDay, completedCheckpoints, timestamps, setupComplete]);
+    saveLocalState(next);
+    if (user) {
+      try {
+        await saveGrowState(user.uid, next);
+      } catch (e) {
+        console.error('[Firestore] Failed to save state:', e);
+      }
+    }
+  }, [getFullState, user]);
 
   const handleStartGrow = () => {
     const day = startDate ? getDaysSince(startDate) : 1;
@@ -86,17 +150,17 @@ export default function App() {
 
   const handleToggleCheckpoint = useCallback((checkpointId: string) => {
     setCompletedCheckpoints(prev => {
-      const next = { ...prev, [checkpointId]: !prev[checkpointId] };
-      return next;
+      const nextCp = { ...prev, [checkpointId]: !prev[checkpointId] };
+      return nextCp;
     });
     setTimestamps(prev => {
-      const next = { ...prev };
-      if (!next[checkpointId]) {
-        next[checkpointId] = new Date().toISOString().split('T')[0];
+      const nextTs = { ...prev };
+      if (!nextTs[checkpointId]) {
+        nextTs[checkpointId] = new Date().toISOString().split('T')[0];
       } else {
-        delete next[checkpointId];
+        delete nextTs[checkpointId];
       }
-      return next;
+      return nextTs;
     });
   }, []);
 
@@ -107,8 +171,42 @@ export default function App() {
   }, [completedCheckpoints, timestamps, setupComplete, persist]);
 
   const addReading = useCallback((reading: EnvironmentalReading) => {
-    setReadings(prev => [...prev, reading]);
-  }, []);
+    setReadings(prev => {
+      const next = [...prev, reading];
+      persist({ readings: next });
+      return next;
+    });
+  }, [persist]);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    setUser(null);
+    setTab('equipment');
+    setBreederLifecycle(80);
+    setStartDate('');
+    setCurrentDay(1);
+    setGermPath(null);
+    setSubzeroActive(false);
+    setReadings([]);
+    setSetupComplete(false);
+    setCompletedCheckpoints({});
+    setTimestamps({});
+  };
+
+  // Show auth screen until Firebase auth initializes
+  if (!authReady) {
+    return (
+      <div className="app">
+        <div className="loading-wrap">
+          <p className="loading-text">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onAuth={(profile) => setUser(profile)} />;
+  }
 
   // Dynamic calculations
   const subzeroStart = breederLifecycle - 14;
@@ -125,7 +223,7 @@ export default function App() {
           <h3>{phase.phaseName}</h3>
           <span className="phase-range">
             {phase.phaseEndDay
-              ? `Days ${phase.phaseStartDay}–${phase.phaseEndDay}`
+              ? `Days ${phase.phaseStartDay}&ndash;${phase.phaseEndDay}`
               : `Days ${phase.phaseStartDay}+`}
           </span>
         </div>
@@ -169,8 +267,15 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="header-content">
-          <h1 className="logo">Go Green</h1>
-          <p className="tagline">Elite Autoflower Grow Guide</p>
+          <div className="header-left">
+            <h1 className="logo">Go Green</h1>
+            <p className="tagline">Elite Autoflower Grow Guide</p>
+          </div>
+          <div className="header-right">
+            {user?.name && <span className="user-name">{user.name}</span>}
+            {firestoreLoading && <span className="sync-badge syncing">Syncing...</span>}
+            <button className="btn-logout" onClick={handleLogout}>Sign Out</button>
+          </div>
         </div>
       </header>
 
@@ -194,12 +299,12 @@ export default function App() {
             <div className="setup-form">
               <label>
                 Breeder Lifecycle (days)
-                <input type="number" value={breederLifecycle} onChange={e => setBreederLifecycle(parseInt(e.target.value) || 80)} min={60} max={120} />
+                <input type="number" value={breederLifecycle} onChange={e => { setBreederLifecycle(parseInt(e.target.value) || 80); persist({ breederLifecycle: parseInt(e.target.value) || 80 }); }} min={60} max={120} />
                 <span className="hint">Projected days from seed to harvest. Common: 75 (fast), 80 (standard), 90 (heavy sativa).</span>
               </label>
               <label>
                 Start Date
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); persist({ startDate: e.target.value }); }} />
                 <span className="hint">The day you planted the seed. Leave blank to start from Day 1.</span>
               </label>
             </div>
@@ -227,7 +332,7 @@ export default function App() {
         {tab === 'germination' && (
           <GerminationSelector
             selectedPath={germPath}
-            onSelectPath={setGermPath}
+            onSelectPath={(path) => { setGermPath(path); persist({ germPath: path }); }}
             completedCheckpoints={completedCheckpoints}
             timestamps={timestamps}
             onToggleCheckpoint={handleToggleCheckpoint}
@@ -238,7 +343,7 @@ export default function App() {
         {tab === 'flower' && (
           <>
             {renderPhaseChecklist(2)}
-            <SubzeroProtocol active={subzeroActive} onToggle={() => setSubzeroActive(v => !v)} currentDay={currentDay} breederLifecycle={breederLifecycle} />
+            <SubzeroProtocol active={subzeroActive} onToggle={() => { setSubzeroActive(v => !v); persist({ subzeroActive: !subzeroActive }); }} currentDay={currentDay} breederLifecycle={breederLifecycle} />
           </>
         )}
 

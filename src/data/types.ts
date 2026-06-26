@@ -43,3 +43,21 @@ export interface EnvironmentalReading {
   wateringMl: number;
   notes: string;
 }
+
+export interface PersistedState {
+  breederLifecycle: number;
+  startDate: string;
+  currentDay: number;
+  completedCheckpoints: Record<string, boolean>;
+  timestamps: Record<string, string>;
+  setupComplete: boolean;
+  germPath: 'direct' | 'transplant' | null;
+  subzeroActive: boolean;
+  readings: EnvironmentalReading[];
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  name?: string;
+}

@@ -6,19 +6,17 @@ import { PhotoPhaseDetail } from './components/PhotoPhaseDetail';
 import { PhotoEnvironmentalLogger } from './components/PhotoEnvironmentalLogger';
 import { PhotoGuardrails } from './components/PhotoGuardrails';
 import { PhotoTracker } from './components/PhotoTracker';
-import type { PhotoEnvironmentalReading } from './data/types';
+import type { PhotoEnvironmentalReading, PhotoPersistedState, UserProfile } from './data/types';
+import { auth } from '../firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { loadPhotoGrowState, savePhotoGrowState, loadUserProfile } from '../services/firestoreService';
+import AuthScreen from '../components/AuthScreen';
 
 type Tab = 'tracker' | 'equipment' | 'germination' | 'timeline' | 'logger' | 'guardrails';
 
 const STORAGE_KEY = 'go-green-photo-state';
 
-interface PersistedState {
-  completedCheckpoints: Record<string, boolean>;
-  timestamps: Record<string, string>;
-  flipped: boolean;
-}
-
-function loadState(): PersistedState | null {
+function loadLocalState(): PhotoPersistedState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -27,12 +25,16 @@ function loadState(): PersistedState | null {
   }
 }
 
-function saveState(state: PersistedState) {
+function saveLocalState(state: PhotoPersistedState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 export default function PhotoApp() {
-  const saved = loadState();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [firestoreLoading, setFirestoreLoading] = useState(false);
+
+  const saved = loadLocalState();
   const [tab, setTab] = useState<Tab>('tracker');
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [selectedPhaseIndex, setSelectedPhaseIndex] = useState<number | null>(null);
@@ -46,14 +48,70 @@ export default function PhotoApp() {
     saved?.timestamps || {}
   );
 
-  const persist = useCallback(() => {
-    const state: PersistedState = {
-      completedCheckpoints,
-      timestamps,
-      flipped,
-    };
-    saveState(state);
-  }, [completedCheckpoints, timestamps, flipped]);
+  // Auth listener — loads state from Firestore when user signs in
+  useEffect(() => {
+    console.log('[Auth] Setting up auth listener (Photo)');
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      console.log('[Auth] Photo auth state changed:', fbUser ? `uid=${fbUser.uid}` : 'null');
+      if (fbUser) {
+        let profile: UserProfile = {
+          uid: fbUser.uid,
+          email: fbUser.email || '',
+        };
+        setUser(profile);
+        setFirestoreLoading(true);
+        try {
+          // Load name from profile document
+          const existingProfile = await loadUserProfile(fbUser.uid);
+          if (existingProfile?.name) {
+            profile = { ...profile, name: existingProfile.name };
+            setUser(profile);
+          }
+
+          const cloudState = await loadPhotoGrowState(fbUser.uid);
+          if (cloudState) {
+            setCompletedCheckpoints(cloudState.completedCheckpoints);
+            setTimestamps(cloudState.timestamps);
+            setFlipped(cloudState.flipped);
+          } else {
+            // First login — migrate any localStorage data to Firestore
+            const local = loadLocalState();
+            if (local) {
+              await savePhotoGrowState(fbUser.uid, local);
+            }
+          }
+        } catch (e) {
+          console.error('[Firestore] Failed to load photo state:', e);
+        } finally {
+          setFirestoreLoading(false);
+        }
+      } else {
+        setUser(null);
+      }
+      console.log('[Auth] Setting authReady=true (Photo)');
+      setAuthReady(true);
+    });
+    return () => unsub();
+  }, []);
+
+  const getFullState = useCallback((): PhotoPersistedState => ({
+    completedCheckpoints,
+    timestamps,
+    flipped,
+  }), [completedCheckpoints, timestamps, flipped]);
+
+  const persist = useCallback(async (updates?: Partial<PhotoPersistedState>) => {
+    const base = getFullState();
+    const next = updates ? { ...base, ...updates } : base;
+    saveLocalState(next);
+    if (user) {
+      try {
+        await savePhotoGrowState(user.uid, next);
+      } catch (e) {
+        console.error('[Firestore] Failed to save photo state:', e);
+      }
+    }
+  }, [getFullState, user]);
 
   const handleToggleCheckpoint = useCallback((checkpointId: string) => {
     setCompletedCheckpoints(prev => {
@@ -92,12 +150,47 @@ export default function PhotoApp() {
     setReadings(prev => [...prev, reading]);
   }, []);
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    setUser(null);
+    setTab('tracker');
+    setCurrentPhaseIndex(0);
+    setSelectedPhaseIndex(null);
+    setGermPath(null);
+    setFlipped(false);
+    setReadings([]);
+    setCompletedCheckpoints({});
+    setTimestamps({});
+  };
+
+  // Show auth screen until Firebase auth initializes
+  if (!authReady) {
+    return (
+      <div className="app">
+        <div className="loading-wrap">
+          <p className="loading-text">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onAuth={(profile) => setUser(profile)} />;
+  }
+
   return (
     <div className="app photo-app">
       <header className="header">
         <div className="header-content">
-          <h1 className="logo">Go Green</h1>
-          <p className="tagline">G7 Photoperiod Genetics Blueprint</p>
+          <div className="header-left">
+            <h1 className="logo">Go Green</h1>
+            <p className="tagline">G7 Photoperiod Genetics Blueprint</p>
+          </div>
+          <div className="header-right">
+            {user?.name && <span className="user-name">{user.name}</span>}
+            {firestoreLoading && <span className="sync-badge syncing">Syncing...</span>}
+            <button className="btn-logout" onClick={handleLogout}>Sign Out</button>
+          </div>
         </div>
       </header>
 
