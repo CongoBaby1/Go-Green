@@ -2,7 +2,7 @@
 
 ## Status: Credentials Copied from The Green Grower
 
-The Firebase config in `src/firebase.ts` is already populated with credentials from The Green Grower project (`the-green-grower`).
+The Firebase config in `src/firebase.ts` is populated with credentials from the Go Green project (`go-green-622e3`).
 
 ## Firestore Rules
 

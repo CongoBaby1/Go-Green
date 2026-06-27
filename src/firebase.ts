@@ -4,13 +4,13 @@ import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCereZSSx1FdINQm95dXaT81QuQIedXCo",
-  authDomain: "the-green-grower.firebaseapp.com",
-  projectId: "the-green-grower",
-  storageBucket: "the-green-grower.firebasestorage.app",
-  messagingSenderId: "1017472176359",
-  appId: "1:1017472176359:web:ba025b44c53a79b6419242",
-  measurementId: "G-NRL71MX7Z3"
+  apiKey: "AIzaSyAK5faQtwiC0SCumaylLFZbz_rk1F2_omUU",
+  authDomain: "go-green-622e3.firebaseapp.com",
+  projectId: "go-green-622e3",
+  storageBucket: "go-green-622e3.firebasestorage.app",
+  messagingSenderId: "1028958219472",
+  appId: "1:1028958219472:web:68519ad08843afbb7a82d5",
+  measurementId: "G-XSF7ZBWNSR"
 };
 
 const app = initializeApp(firebaseConfig);
